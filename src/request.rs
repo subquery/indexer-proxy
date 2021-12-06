@@ -1,4 +1,5 @@
-use reqwest;
+use lazy_static::lazy_static;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
@@ -76,14 +77,16 @@ pub struct QueryBody {
     pub query: GraphQLQuery,
 }
 
+lazy_static! {
+    pub static ref REQUEST_CLIENT: Client = reqwest::Client::new();
+}
+
 // TODO: reorganise the errors
 pub async fn graphql_request(uri: &str, query: GraphQLQuery) -> Result<Value, GraphQLServerError> {
     let body = serde_json::to_string(&query)
         .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
 
-    // TODO: should maintain only one client instance
-    let client = reqwest::Client::new();
-    let response_result = client
+    let response_result = REQUEST_CLIENT
         .post(uri)
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(body)

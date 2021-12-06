@@ -102,8 +102,8 @@ curl -i -X POST $URL \
 TIME_COST="\n\n%{time_connect} + %{time_starttransfer} = %{time_total}\n"
 
 curl -w $TIME_COST -i -X POST $URL \
--H 'Content-Type: application/json'\ 
--H "Authorization: Bearer $TOKEN"\ 
+-H 'Content-Type: application/json' \
+-H "Authorization: Bearer $TOKEN" \
 -d "{
   \"query\": { 
     \"query\": \"query GetAccounts(\$first: Int\!) { accounts (first: \$first) { nodes { id } } }\",
