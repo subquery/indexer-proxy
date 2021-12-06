@@ -46,10 +46,6 @@ pub async fn start_server(port: u16) {
         .and(token_query)
         .and_then(get_token);
 
-    let discovery_route = warp::path!("discovery" / String)
-        .and(warp::get())
-        .and_then(discovery_handler);
-
     let query_route = warp::path!("query" / String)
         .and(warp::post())
         .and(with_auth())
@@ -57,22 +53,8 @@ pub async fn start_server(port: u16) {
         .and_then(query_handler);
 
     // chain the routes
-    let routes = discovery_route
-        .or(token_route)
-        .or(query_route)
-        .recover(error::handle_rejection);
-
+    let routes = token_route.or(query_route).recover(error::handle_rejection);
     warp::serve(routes).run(([127, 0, 0, 1], port)).await;
-}
-
-pub async fn discovery_handler(deployment_id: String) -> WebResult<impl Reply> {
-    let id = deployment_id.hash();
-    match PROJECTS::get(&id) {
-        Ok(_) => Ok(reply::json(&QueryUri {
-            uri: format!("/query/{}", id),
-        })),
-        _ => Err(reject::custom(error::Error::InvalidProejctId)),
-    }
 }
 
 pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
@@ -91,7 +73,7 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
 }
 
 pub async fn query_handler(id: String, _: String, body: QueryBody) -> WebResult<impl Reply> {
-    let query_url = match PROJECTS::get(&id) {
+    let query_url = match PROJECTS::get(&id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };

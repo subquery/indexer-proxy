@@ -14,7 +14,7 @@ pub enum Error {
     NoAuthHeaderError,
     #[error("invalid auth header")]
     InvalidAuthHeaderError,
-    #[error("no permission")]
+    #[error("invalid auth token")]
     NoPermissionError,
     #[error("invalid query params")]
     InvalidQueryParamsError,
