@@ -38,7 +38,7 @@ OPTIONS:
 ###  `/discovery/${id}`
 
 ```sh
-curl -i -X GET http://127.0.0.1:8003/discovery/0x6c8212408c3c62fc78cbfa9d6fe5ff39348c1009114a6315b1e2256459135348
+curl -i -X GET http://127.0.0.1:8003/discovery/0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e
 ```
 
 Response:
