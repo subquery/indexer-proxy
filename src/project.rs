@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use crate::cli::CommandLineArgs;
 use crate::error::Error;
 use crate::request::{graphql_request, GraphQLQuery};
 
@@ -39,6 +40,20 @@ struct ProjectItem {
     queryEndpoint: String,
 }
 
+pub async fn validate_service_url(url: &str) {
+    let query_string = String::from("query { accountMetadata { indexer } }");
+    let query = GraphQLQuery::new(query_string);
+    let result = graphql_request(url, query).await;
+
+    match result {
+        Ok(value) => {
+            let _ = value.pointer("/data/accountMetadata/indexer").unwrap();
+        }
+        Err(e) => panic!("Invalid service url: {}, error: {}", url, e),
+    };
+}
+
+// FIXME: elimate all `unwrap()` no panic
 pub async fn init_projects(url: &str) {
     // graphql query for getting alive projects
     let query_string = String::from("query { getAliveProjects { id queryEndpoint } }");
@@ -57,5 +72,8 @@ pub async fn init_projects(url: &str) {
         }
         Err(e) => println!("{}", e),
     };
-    println!("\n project results: {:?}", PROJECTS.lock().unwrap());
+
+    if CommandLineArgs::debug() {
+        println!("\n valid projects: {:?}", PROJECTS.lock().unwrap());
+    }
 }

@@ -8,9 +8,11 @@ use warp::{
     reject, Filter, Rejection,
 };
 
+// use crate::cli::CommandLineArgs;
 use crate::types::WebResult;
 
 const BEARER: &str = "Bearer ";
+// FIXME: use `secret_key` from commandline args
 const JWT_SECRET: &[u8] = b"secret";
 
 #[derive(Serialize, Deserialize)]

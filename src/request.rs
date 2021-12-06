@@ -79,7 +79,6 @@ pub struct QueryBody {
 pub async fn graphql_request(uri: &str, query: GraphQLQuery) -> Result<Value, GraphQLServerError> {
     let body = serde_json::to_string(&query)
         .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
-    println!("query request body {:?}\n", body);
 
     let client = reqwest::Client::new();
     let response_result = client

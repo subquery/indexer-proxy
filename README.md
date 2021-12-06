@@ -9,7 +9,28 @@
 
 2. Start `proxy server`
 
-- `cargo run`
+- `cargo build`
+- `./target/debug/indexer-proxy --secret-key your-key --service-url http://127.0.0.1:8000/graphql`
+
+3. Run command with help
+
+```
+./target/debug/indexer-proxy --help
+Indexer Proxy 0.1.0
+Command line for starting indexer proxy server
+
+USAGE:
+    indexer-proxy [OPTIONS] --secret-key <secret-key> --service-url <service-url>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -p, --port <port>                  Port the service will listen on [default: 8003]
+        --secret-key <secret-key>      Secret key for generating auth token
+        --service-url <service-url>    Coordinator service endpoint
+```
 
 ## APIs
 

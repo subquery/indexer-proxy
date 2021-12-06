@@ -2,6 +2,11 @@
 name = "indexer-proxy"
 version = "0.1.0"
 edition = "2018"
+default-run = "indexer-proxy"
+
+[[bin]]
+name = "indexer-proxy"
+path = "src/main.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
