@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use crate::error::Error;
 use crate::request::{graphql_request, GraphQLQuery};
 
 lazy_static! {
@@ -17,10 +18,13 @@ impl PROJECTS {
         map.insert(deployment_id, url);
     }
 
-    pub fn get(deployment_id: &str) -> Option<String> {
+    pub fn get(deployment_id: &str) -> Result<String, Error> {
         let map = PROJECTS.lock().unwrap();
-        let url = map.get(deployment_id).unwrap();
-        Some(url.to_owned())
+        let url = match map.get(deployment_id) {
+            Some(url) => url,
+            None => return Err(Error::InvalidProejctId),
+        };
+        Ok(url.to_owned())
     }
 }
 

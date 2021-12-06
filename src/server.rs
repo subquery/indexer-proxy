@@ -67,21 +67,26 @@ pub async fn start_server(port: u16) {
 pub async fn discovery_handler(deployment_id: String) -> WebResult<impl Reply> {
     // TODO: convert deployment_id to a hash value, return `/query/hash_value` endpoint
     match PROJECTS::get(&deployment_id) {
-        Some(_) => Ok(reply::json(&QueryUri {
+        Ok(_) => Ok(reply::json(&QueryUri {
             uri: format!("/query/{}", deployment_id),
         })),
-        _ => Err(reject::custom(error::Error::InvalidQueryParamsError)),
+        _ => Err(reject::custom(error::Error::InvalidProejctId)),
     }
 }
 
 pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
-    match request_praram {
-        Some(user) => {
-            let token = auth::create_jwt(user).map_err(|e| reject::custom(e))?;
-            return Ok(reply::json(&QueryToken { token }));
-        }
-        None => Err(reject::custom(error::Error::InvalidQueryParamsError)),
-    }
+    let user = match request_praram {
+        Some(user) => user,
+        None => return Err(reject::custom(error::Error::InvalidQueryParamsError)),
+    };
+
+    let _ = match PROJECTS::get(&user.deployment_id) {
+        Ok(url) => url,
+        Err(e) => return Err(reject::custom(e)),
+    };
+
+    let token = auth::create_jwt(user).map_err(|e| reject::custom(e))?;
+    return Ok(reply::json(&QueryToken { token }));
 }
 
 pub async fn query_handler(
@@ -89,8 +94,11 @@ pub async fn query_handler(
     _: String,
     body: QueryBody,
 ) -> WebResult<impl Reply> {
-    // TODO: handle `incorrect id` error
-    let query_url = PROJECTS::get(&deployment_id).unwrap();
+    let query_url = match PROJECTS::get(&deployment_id) {
+        Ok(url) => url,
+        Err(e) => return Err(reject::custom(e)),
+    };
+
     let response = graphql_request(&query_url, body.query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),

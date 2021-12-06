@@ -6,6 +6,8 @@ mod request;
 mod server;
 mod types;
 
+// TODO: elimate all `unwrap()` no panic
+
 #[tokio::main]
 async fn main() {
     // FIXME: get port from cli
