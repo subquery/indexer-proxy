@@ -1,4 +1,5 @@
 #![deny(warnings)]
+use blake3;
 use serde::Serialize;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{reject, reply, Filter, Reply};
@@ -65,10 +66,10 @@ pub async fn start_server(port: u16) {
 }
 
 pub async fn discovery_handler(deployment_id: String) -> WebResult<impl Reply> {
-    // TODO: convert deployment_id to a hash value, return `/query/hash_value` endpoint
-    match PROJECTS::get(&deployment_id) {
+    let id = blake3::hash(deployment_id.as_bytes()).to_string();
+    match PROJECTS::get(&id) {
         Ok(_) => Ok(reply::json(&QueryUri {
-            uri: format!("/query/{}", deployment_id),
+            uri: format!("/query/{}", id),
         })),
         _ => Err(reject::custom(error::Error::InvalidProejctId)),
     }
@@ -89,12 +90,8 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
     return Ok(reply::json(&QueryToken { token }));
 }
 
-pub async fn query_handler(
-    deployment_id: String,
-    _: String,
-    body: QueryBody,
-) -> WebResult<impl Reply> {
-    let query_url = match PROJECTS::get(&deployment_id) {
+pub async fn query_handler(id: String, _: String, body: QueryBody) -> WebResult<impl Reply> {
+    let query_url = match PROJECTS::get(&id) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };

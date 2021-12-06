@@ -1,3 +1,4 @@
+use blake3;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,9 +18,9 @@ impl PROJECTS {
         map.insert(deployment_id, url);
     }
 
-    pub fn get(deployment_id: &str) -> Result<String, Error> {
+    pub fn get(key: &str) -> Result<String, Error> {
         let map = PROJECTS.lock().unwrap();
-        let url = match map.get(deployment_id) {
+        let url = match map.get(key) {
             Some(url) => url,
             None => return Err(Error::InvalidProejctId),
         };
@@ -38,6 +39,12 @@ struct ProjectItem {
     id: String,
     #[serde(rename = "queryEndpoint")]
     query_endpoint: String,
+}
+
+impl ProjectItem {
+    fn hash(&self) -> String {
+        blake3::hash(self.id.as_bytes()).to_string()
+    }
 }
 
 pub async fn validate_service_url(url: &str) {
@@ -67,7 +74,7 @@ pub async fn init_projects(url: &str) {
             let v_str = serde_json::to_string(v_d).unwrap();
             let v: Response = serde_json::from_str(v_str.as_str()).unwrap();
             for item in v.get_alive_projects {
-                PROJECTS::add(item.id, item.query_endpoint);
+                PROJECTS::add(item.hash(), item.query_endpoint);
             }
         }
         Err(e) => println!("{}", e),
