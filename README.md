@@ -2,17 +2,18 @@
 
 ## Run Locally
 
-1. Start `coordinator service`
+### Start `coordinator service`
 
 - `yarn start:db`
 - `yarn start:testnet`
+- `yarn mock:projects`: add and start mock projects
 
-2. Start `proxy server`
+### Start `proxy server`
 
 - `cargo build`
 - `./target/debug/indexer-proxy --secret-key your-key --service-url http://127.0.0.1:8000/graphql`
 
-1. Output help menu
+### Output help menu
 
 ```sh
 ./target/debug/indexer-proxy --help
@@ -44,14 +45,14 @@ Response:
 
 ```json
 {
-  "uri": "/query/0x6c8212408c3c62fc78cbfa9d6fe5ff39348c1009114a6315b1e2256459135348"
+  "uri": "/query/0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
 }
 ```
 
 ### `/token?user_id=${user_id}&deployment_id=${id}`
 
 ```sh
-curl -i -X GET http://127.0.0.1:8003/token?user_id="0x59ce189fd40611162017deb88d826C3485f41e0D"&deployment_id="0x6c8212408c3c62fc78cbfa9d6fe5ff39348c1009114a6315b1e2256459135348"
+curl -i -X GET http://127.0.0.1:8003/token?user_id="0x59ce189fd40611162017deb88d826C3485f41e0D"&deployment_id="0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
 ```
 
 Response:
@@ -64,10 +65,12 @@ Response:
 
 ### `/query/${id}`
 
+#### Normal Query
+
 ```sh
 export TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjp7InVzZXJfaWQiOiIweGVlcmZzZGZkc2YiLCJkZXBsb3ltZW50X2lkIjoiMHg2YzgyMTI0MDhjM2M2MmZjNzhjYmZhOWQ2ZmU1ZmYzOTM0OGMxMDA5MTE0YTYzMTViMWUyMjU2NDU5MTM1MzQ4In0sImV4cCI6MTYzODg0MTIyN30.ZUiW_m3Li5eklc1cK5z2VOLVqlv9yPQ9ojHddegSiNKj5eEf8PoTsbzIKhHFkUkRtgArMTiJhmDRT_9L7vCKIg"
 
-export ID="0x6c8212408c3c62fc78cbfa9d6fe5ff39348c1009114a6315b1e2256459135348"
+export ID="0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
 
 
 curl -i -X POST "http://127.0.0.1:8003/query/$ID" \
@@ -75,12 +78,12 @@ curl -i -X POST "http://127.0.0.1:8003/query/$ID" \
 -H "Authorization: Bearer $TOKEN" \
 -d "{
   \"query\": { 
-    \"query\": \"{ _metadata { indexerHealthy chain} }\" 
+    \"query\": \"query { _metadata { indexerHealthy chain} }\" 
   }
 }"
 ```
 
-Response:
+**Response**:
 
 ```json
 {
@@ -93,18 +96,33 @@ Response:
 }
 ```
 
-### TODO:
-Need to test request with `operation_name` and `variables`, have problem with `operationName`
+#### Query with `operation_name` and `variables`
 
 ```sh
-curl -i -X POST "http://127.0.0.1:8003/query/$ID" \
--H 'Content-Type: application/json' \
--H "Authorization: Bearer $TOKEN" \
+TIME_COST="\n\n%{time_connect} + %{time_starttransfer} = %{time_total}\n"
+
+curl -w $TIME_COST -i -X POST "http://127.0.0.1:8003/query/$ID" \
+-H 'Content-Type: application/json'\ 
+-H "Authorization: Bearer $TOKEN"\ 
 -d "{
-  \"query\": {
-    \"query\": \"GetAccounts (\$first: Int) { accounts (first: \$first) { nodes { id } } }\",
+  \"query\": { 
+    \"query\": \"query GetAccounts(\$first: Int\!) { accounts (first: \$first) { nodes { id } } }\",
     \"variables\": { \"first\": 5 },
     \"operationName\": \"GetAccounts\"
   }
 }"
+```
+
+**Response**:
+
+```json
+{"data":{
+  "accounts":{
+    "nodes":[
+      {"id":"2oacrSFsNu31PvuUDfULWE6oMHhSjtEk81moPCxX2SYXUuNE"},
+      {"id":"2oafaTyZ9a9aoh8Cnhcr3e1LNrAiQdwi4kbeGmTCSTBARRHn"},
+      {"id":"2oakar8GYiNytA4U68kKrfS2qpLfdGPEZjSCUVLYC8izRAGj"},
+      {"id":"2oAserkFvEk5p4HMJaqRoDnedjaHzJLNPvyN5JaRLPhn4zpW"},
+      {"id":"2oaY38m69Ditx8Rft5kdXPZgtzwuvpx42oFnLBeUyzfa2XfH"}
+    ]}}}
 ```
