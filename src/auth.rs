@@ -8,7 +8,6 @@ use warp::{
     reject, Filter, Rejection,
 };
 
-// use crate::cli::CommandLineArgs;
 use crate::types::WebResult;
 
 const BEARER: &str = "Bearer ";
@@ -67,7 +66,7 @@ async fn authorize(headers: RequestHeader) -> WebResult<String> {
 
             Ok(decoded.claims.exp.to_string())
         }
-        Err(e) => return Err(reject::custom(e)),
+        Err(_) => return Err(reject::custom(Error::NoPermissionError)),
     }
 }
 

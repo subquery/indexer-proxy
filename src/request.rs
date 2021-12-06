@@ -55,8 +55,9 @@ pub struct GraphQLQuery {
     /// The GraphQL query, as a string.
     pub query: String,
     ///  The GraphQL query variables
-    pub variables: Option<String>,
+    pub variables: Option<Value>,
     /// The GraphQL operation name, as a string.
+    #[serde(rename = "operationName")]
     pub operation_name: Option<String>,
 }
 
@@ -80,6 +81,9 @@ pub async fn graphql_request(uri: &str, query: GraphQLQuery) -> Result<Value, Gr
     let body = serde_json::to_string(&query)
         .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
 
+    println!(">>{} \n", body);
+
+    // TODO: should maintain only one client instance
     let client = reqwest::Client::new();
     let response_result = client
         .post(uri)

@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -31,13 +29,15 @@ impl PROJECTS {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Response {
-    getAliveProjects: Vec<ProjectItem>,
+    #[serde(rename = "getAliveProjects")]
+    get_alive_projects: Vec<ProjectItem>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ProjectItem {
     id: String,
-    queryEndpoint: String,
+    #[serde(rename = "queryEndpoint")]
+    query_endpoint: String,
 }
 
 pub async fn validate_service_url(url: &str) {
@@ -66,14 +66,14 @@ pub async fn init_projects(url: &str) {
             let v_d = value.pointer("/data").unwrap();
             let v_str = serde_json::to_string(v_d).unwrap();
             let v: Response = serde_json::from_str(v_str.as_str()).unwrap();
-            for item in v.getAliveProjects {
-                PROJECTS::add(item.id, item.queryEndpoint);
+            for item in v.get_alive_projects {
+                PROJECTS::add(item.id, item.query_endpoint);
             }
         }
         Err(e) => println!("{}", e),
     };
 
     if CommandLineArgs::debug() {
-        println!("\n valid projects: {:?}", PROJECTS.lock().unwrap());
+        tracing::info!("valid projects: {:?}", PROJECTS.lock().unwrap());
     }
 }
