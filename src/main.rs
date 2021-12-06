@@ -5,6 +5,8 @@ mod error;
 mod project;
 mod request;
 mod server;
+mod tools;
+mod traits;
 mod types;
 
 #[tokio::main]

@@ -81,8 +81,6 @@ pub async fn graphql_request(uri: &str, query: GraphQLQuery) -> Result<Value, Gr
     let body = serde_json::to_string(&query)
         .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
 
-    println!(">>{} \n", body);
-
     // TODO: should maintain only one client instance
     let client = reqwest::Client::new();
     let response_result = client

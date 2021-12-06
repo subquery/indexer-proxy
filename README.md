@@ -38,14 +38,14 @@ OPTIONS:
 ###  `/discovery/${id}`
 
 ```sh
-curl -i -X GET http://127.0.0.1:8003/discovery/0x6c8212408c3c62fc78cbfa9d6fe5ff39348c1009114a6315b1e2256459135348
+curl -i -X GET http://127.0.0.1:8003/discovery/0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e
 ```
 
 Response:
 
 ```json
 {
-  "uri": "/query/0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
+  "uri": "/query/16fbda6ab09d964ab69d04080861b37cc99a10d8a0d39059f2a61f70cc5a42e9"
 }
 ```
 
@@ -70,10 +70,10 @@ Response:
 ```sh
 export TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjp7InVzZXJfaWQiOiIweGVlcmZzZGZkc2YiLCJkZXBsb3ltZW50X2lkIjoiMHg2YzgyMTI0MDhjM2M2MmZjNzhjYmZhOWQ2ZmU1ZmYzOTM0OGMxMDA5MTE0YTYzMTViMWUyMjU2NDU5MTM1MzQ4In0sImV4cCI6MTYzODg0MTIyN30.ZUiW_m3Li5eklc1cK5z2VOLVqlv9yPQ9ojHddegSiNKj5eEf8PoTsbzIKhHFkUkRtgArMTiJhmDRT_9L7vCKIg"
 
-export ID="0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
+export URL="http://127.0.0.1:8003/query/16fbda6ab09d964ab69d04080861b37cc99a10d8a0d39059f2a61f70cc5a42e9"
 
 
-curl -i -X POST "http://127.0.0.1:8003/query/$ID" \
+curl -i -X POST $URL \
 -H 'Content-Type: application/json' \
 -H "Authorization: Bearer $TOKEN" \
 -d "{
@@ -101,7 +101,7 @@ curl -i -X POST "http://127.0.0.1:8003/query/$ID" \
 ```sh
 TIME_COST="\n\n%{time_connect} + %{time_starttransfer} = %{time_total}\n"
 
-curl -w $TIME_COST -i -X POST "http://127.0.0.1:8003/query/$ID" \
+curl -w $TIME_COST -i -X POST $URL \
 -H 'Content-Type: application/json'\ 
 -H "Authorization: Bearer $TOKEN"\ 
 -d "{

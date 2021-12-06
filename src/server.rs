@@ -1,5 +1,4 @@
 #![deny(warnings)]
-use blake3;
 use serde::Serialize;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{reject, reply, Filter, Reply};
@@ -11,6 +10,7 @@ use crate::error;
 use crate::project::PROJECTS;
 use crate::request::graphql_request;
 use crate::request::QueryBody;
+use crate::traits::Hash;
 use crate::types::WebResult;
 
 // TODO: refactor to separate `mod`
@@ -66,7 +66,7 @@ pub async fn start_server(port: u16) {
 }
 
 pub async fn discovery_handler(deployment_id: String) -> WebResult<impl Reply> {
-    let id = blake3::hash(deployment_id.as_bytes()).to_string();
+    let id = deployment_id.hash();
     match PROJECTS::get(&id) {
         Ok(_) => Ok(reply::json(&QueryUri {
             uri: format!("/query/{}", id),
@@ -81,7 +81,7 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
         None => return Err(reject::custom(error::Error::InvalidQueryParamsError)),
     };
 
-    let _ = match PROJECTS::get(&user.deployment_id) {
+    let _ = match PROJECTS::get(&user.deployment_id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
