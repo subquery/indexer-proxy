@@ -6,7 +6,6 @@
 
 - `yarn start:db`
 - `yarn start:testnet`
-- `yarn mock:projects`: add and start mock projects
 
 ### Start `proxy server`
 
