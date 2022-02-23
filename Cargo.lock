@@ -634,27 +634,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexer-proxy"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "chrono",
- "graphql_client",
- "jsonwebtoken",
- "lazy_static",
- "reqwest",
- "serde",
- "serde_json",
- "serde_with",
- "structopt",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "warp",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,6 +1431,27 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "subql-proxy"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "chrono",
+ "graphql_client",
+ "jsonwebtoken",
+ "lazy_static",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "warp",
 ]
 
 [[package]]

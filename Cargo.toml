@@ -1,11 +1,11 @@
 [package]
-name = "indexer-proxy"
+name = "subql-proxy"
 version = "0.1.0"
 edition = "2018"
-default-run = "indexer-proxy"
+default-run = "subql-proxy"
 
 [[bin]]
-name = "indexer-proxy"
+name = "subql-proxy"
 path = "src/main.rs"
 
 [dependencies]
