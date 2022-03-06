@@ -24,3 +24,7 @@ tracing = "0.1.29"
 tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
 structopt = "0.3.25"
 blake3="1.2.0"
+
+[profile.release]
+lto = true
+codegen-units = 1

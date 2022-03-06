@@ -1,18 +1,43 @@
-# Rust as the base image
-FROM rust:1.54
+# Builder
+FROM rust:latest AS builder
 
-RUN USER=root cargo new --bin subql-proxy
-WORKDIR /subql-proxy
+RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install -y musl-tools musl-dev
+RUN update-ca-certificates
 
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./Cargo.toml ./Cargo.toml
+# Create appuser
+ENV USER=subql
+ENV UID=10001
 
-RUN cargo build --release
-RUN rm src/*.rs
+RUN adduser \
+  --disabled-password \
+  --gecos "" \
+  --home "/nonexistent" \
+  --shell "/sbin/nologin" \
+  --no-create-home \
+  --uid "${UID}" \
+  "${USER}"
 
-COPY ./src ./src
 
-RUN rm -r ./target/release/deps
-RUN cargo install --path .
+WORKDIR /subql
 
-CMD ["subql-proxy"]
+COPY ./ .
+
+RUN cargo build --target x86_64-unknown-linux-musl --release
+
+# Final image
+FROM scratch
+
+# Import from builder.
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+WORKDIR /subql
+
+# Copy our build
+COPY --from=builder /subql/target/x86_64-unknown-linux-musl/release/subql-proxy /usr/local/bin
+
+# Use an unprivileged user.
+USER subql:subql
+
+ENTRYPOINT ["/usr/local/bin/subql-proxy"]
