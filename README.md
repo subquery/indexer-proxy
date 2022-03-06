@@ -6,7 +6,6 @@
 
 - `yarn start:db`
 - `yarn start:testnet`
-- `yarn mock:projects`: add and start mock projects
 
 ### Start `proxy server`
 
@@ -38,7 +37,7 @@ OPTIONS:
 ### `/token?user_id=${user_id}&deployment_id=${id}`
 
 ```sh
-curl -i -X GET http://127.0.0.1:8003/token?user_id="0x59ce189fd40611162017deb88d826C3485f41e0D"&deployment_id="0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
+curl -i -X GET http://127.0.0.1:8003/token?user_id="0x59ce189fd40611162017deb88d826C3485f41e0D"&deployment_id="QmdehxWNdDBNM5jXmb4qbCkGBpTW6ooVy17NYGoMEeowxt"
 ```
 
 Response:
@@ -56,7 +55,7 @@ Response:
 ```sh
 export TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjp7InVzZXJfaWQiOiIweGVlcmZzZGZkc2YiLCJkZXBsb3ltZW50X2lkIjoiMHg2YzgyMTI0MDhjM2M2MmZjNzhjYmZhOWQ2ZmU1ZmYzOTM0OGMxMDA5MTE0YTYzMTViMWUyMjU2NDU5MTM1MzQ4In0sImV4cCI6MTYzODg0MTIyN30.ZUiW_m3Li5eklc1cK5z2VOLVqlv9yPQ9ojHddegSiNKj5eEf8PoTsbzIKhHFkUkRtgArMTiJhmDRT_9L7vCKIg"
 
-export URL="http://127.0.0.1:8003/query/0x7aa3510fe0f76233d377cce09631fb1b0093de258ca0036afb7dc704c7c1d15e"
+export URL="http://127.0.0.1:8003/query/QmdehxWNdDBNM5jXmb4qbCkGBpTW6ooVy17NYGoMEeowxt"
 
 
 curl -i -X POST $URL \
