@@ -55,9 +55,14 @@ pub async fn start_server(host: &str, port: u16) {
         .and_then(query_handler);
 
     // chain the routes
-    let ip_address: Ipv4Addr = host.parse().unwrap_or(Ipv4Addr::LOCALHOST);
     let routes = token_route.or(query_route).recover(error::handle_rejection);
-    warp::serve(routes).run((ip_address, port)).await;
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_header("content-type")
+        .allow_methods(vec!["GET", "POST"]);
+
+    let ip_address: Ipv4Addr = host.parse().unwrap_or(Ipv4Addr::LOCALHOST);
+    warp::serve(routes.with(cors)).run((ip_address, port)).await;
 }
 
 pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
