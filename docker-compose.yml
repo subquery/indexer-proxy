@@ -5,7 +5,7 @@ services:
     image: dev4mz/proxy:0.0.3
     container_name: proxy_server
     ports:
-      - 8001:8001
+      - 0.0.0.0:8001:80
     restart: always
     command:
       - --port=8001

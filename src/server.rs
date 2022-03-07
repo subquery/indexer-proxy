@@ -1,4 +1,6 @@
 #![deny(warnings)]
+use std::net::Ipv4Addr;
+
 use serde::Serialize;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{reject, reply, Filter, Reply};
@@ -28,7 +30,7 @@ pub struct QueryToken {
     pub token: String,
 }
 
-pub async fn start_server(port: u16) {
+pub async fn start_server(host: &str, port: u16) {
     // configure the tracing subscriber
     let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,warp=debug".to_owned());
     tracing_subscriber::fmt()
@@ -53,8 +55,9 @@ pub async fn start_server(port: u16) {
         .and_then(query_handler);
 
     // chain the routes
+    let ip_address: Ipv4Addr = host.parse().unwrap_or(Ipv4Addr::LOCALHOST);
     let routes = token_route.or(query_route).recover(error::handle_rejection);
-    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
+    warp::serve(routes).run((ip_address, port)).await;
 }
 
 pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {

@@ -5,6 +5,7 @@ use structopt::StructOpt;
     name = "Indexer Proxy",
     about = "Command line for starting indexer proxy server"
 )]
+
 pub struct CommandLineArgs {
     /// enable debug mode
     #[structopt(short = "d", long = "debug")]
@@ -18,6 +19,9 @@ pub struct CommandLineArgs {
     /// Secret key for generating auth token
     #[structopt(long = "secret-key")]
     pub secret_key: String,
+    /// IP address for the server
+    #[structopt(long = "host", default_value = "127.0.0.1")]
+    pub host: String,
 }
 
 impl CommandLineArgs {
@@ -31,6 +35,10 @@ impl CommandLineArgs {
 
     pub fn secret_key() -> String {
         CommandLineArgs::from_args().secret_key
+    }
+
+    pub fn host() -> String {
+        CommandLineArgs::from_args().host
     }
 
     pub fn debug() -> bool {
