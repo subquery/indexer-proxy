@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  proxy-service:
+    image: dev4mz/proxy:0.0.3
+    container_name: proxy_server
+    ports:
+      - 8001:8001
+    restart: always
+    command:
+      - --port=8001
+      - --secret-key=qmbyd5hwac2jdcu
+      - --service-url=http://coordinator-service:8000/graphql
+networks:
+  default:
+    external:
+      name: cooridnator-service
