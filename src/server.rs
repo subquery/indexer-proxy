@@ -6,7 +6,6 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
-use crate::auth::with_auth;
 use crate::auth::User;
 use crate::error;
 use crate::project::PROJECTS;
@@ -50,7 +49,7 @@ pub async fn start_server(host: &str, port: u16) {
 
     let query_route = warp::path!("query" / String)
         .and(warp::post())
-        .and(with_auth())
+        // .and(with_auth()) // temporary disabled the auth check
         .and(warp::body::json())
         .and_then(query_handler);
 
@@ -80,7 +79,7 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
     return Ok(reply::json(&QueryToken { token }));
 }
 
-pub async fn query_handler(id: String, _: String, body: QueryBody) -> WebResult<impl Reply> {
+pub async fn query_handler(id: String, body: QueryBody) -> WebResult<impl Reply> {
     let query_url = match PROJECTS::get(&id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
