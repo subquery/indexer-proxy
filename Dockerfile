@@ -35,9 +35,9 @@ COPY --from=builder /etc/group /etc/group
 WORKDIR /subql
 
 # Copy our build
-COPY --from=builder /subql/target/x86_64-unknown-linux-musl/release/subql-proxy /usr/local/bin
+COPY --from=builder /subql/target/x86_64-unknown-linux-musl/release/subql-proxy .
 
 # Use an unprivileged user.
 USER subql:subql
 
-ENTRYPOINT ["/usr/local/bin/subql-proxy"]
+ENTRYPOINT ["./subql-proxy"]
