@@ -1,8 +1,13 @@
 use blake3;
 use lazy_static::lazy_static;
+use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use tracing::info;
+use tungstenite::client::IntoClientRequest;
+use tungstenite::{connect, Message};
 
 use crate::cli::CommandLineArgs;
 use crate::error::Error;
@@ -29,7 +34,7 @@ impl PROJECTS {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Response {
+struct ProjectsResponse {
     #[serde(rename = "getAliveProjects")]
     get_alive_projects: Vec<ProjectItem>,
 }
@@ -60,7 +65,6 @@ pub async fn validate_service_url(url: &str) {
     };
 }
 
-// FIXME: elimate all `unwrap()` no panic
 pub async fn init_projects(url: &str) {
     // graphql query for getting alive projects
     let query_string = String::from("query { getAliveProjects { id queryEndpoint } }");
@@ -69,18 +73,53 @@ pub async fn init_projects(url: &str) {
 
     match result {
         Ok(value) => {
-            // TODO: error handling for desctructing | also extract these to a separate function | will use for subscription update
             let v_d = value.pointer("/data").unwrap();
             let v_str = serde_json::to_string(v_d).unwrap();
-            let v: Response = serde_json::from_str(v_str.as_str()).unwrap();
+            let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
             for item in v.get_alive_projects {
                 PROJECTS::add(item.hash(), item.query_endpoint);
             }
         }
-        Err(e) => println!("{}", e),
+        Err(e) => println!("Init projects failed: {}", e),
     };
 
     if CommandLineArgs::debug() {
-        tracing::info!("valid projects: {:?}", PROJECTS.lock().unwrap());
+        info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
+    }
+}
+
+pub fn subscribe_project_change(url: &str) {
+    let mut websocket_url = url.to_owned();
+    websocket_url.replace_range(0..4, "ws");
+
+    let mut request = websocket_url.into_client_request().unwrap();
+    request.headers_mut().insert(
+        "Sec-WebSocket-Protocol",
+        HeaderValue::from_str("graphql-ws").unwrap(),
+    );
+    let (mut socket, _) = connect(request).unwrap();
+    info!("Connected to the websocket server");
+
+    let out_message = json!({
+        "type": "start",
+        "payload": {
+            "query": "subscription { projectChanged { id queryEndpoint } }"
+        }
+    })
+    .to_string();
+    let _ = socket.write_message(Message::Text(out_message)).unwrap();
+    loop {
+        let incoming_msg = socket.read_message().expect("Error reading message");
+        // info!("text: {:?}", incoming_msg.to_text());
+        // let text = incoming_msg.to_text().unwrap();
+        // let value: Value = serde_json::from_str(text).unwrap();
+        info!("incoming_msg: {:?}", incoming_msg);
+        // let project = value.pointer("payload/data/projectChanged").unwrap();
+        // let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
+        // PROJECTS::add(item.hash(), item.query_endpoint);
+
+        if CommandLineArgs::debug() {
+            info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
+        }
     }
 }

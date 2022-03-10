@@ -1462,6 +1462,8 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "tungstenite",
+ "url",
  "warp",
 ]
 

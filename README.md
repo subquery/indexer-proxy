@@ -20,13 +20,15 @@ Indexer Proxy 0.1.0
 Command line for starting indexer proxy server
 
 USAGE:
-    indexer-proxy [OPTIONS] --secret-key <secret-key> --service-url <service-url>
+    subql-proxy [FLAGS] [OPTIONS] --secret-key <secret-key> --service-url <service-url>
 
 FLAGS:
+    -d, --debug      enable debug mode
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
+        --host <host>                  IP address for the server [default: 127.0.0.1]
     -p, --port <port>                  Port the service will listen on [default: 8003]
         --secret-key <secret-key>      Secret key for generating auth token
         --service-url <service-url>    Coordinator service endpoint

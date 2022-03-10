@@ -15,7 +15,9 @@ async fn main() {
     let port = cli::CommandLineArgs::port();
     let host = cli::CommandLineArgs::host();
 
+    tracing_subscriber::fmt().init();
     project::validate_service_url(&service_url).await;
     project::init_projects(&service_url).await;
+    project::subscribe_project_change(&service_url);
     server::start_server(&host, port).await
 }

@@ -2,7 +2,6 @@
 use std::net::Ipv4Addr;
 
 use serde::Serialize;
-use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
@@ -30,13 +29,6 @@ pub struct QueryToken {
 }
 
 pub async fn start_server(host: &str, port: u16) {
-    // configure the tracing subscriber
-    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,warp=debug".to_owned());
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
-
     // create routes
     let token_query = warp::query::<User>()
         .map(Some)
