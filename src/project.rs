@@ -110,13 +110,11 @@ pub fn subscribe_project_change(url: &str) {
     let _ = socket.write_message(Message::Text(out_message)).unwrap();
     loop {
         let incoming_msg = socket.read_message().expect("Error reading message");
-        // info!("text: {:?}", incoming_msg.to_text());
-        // let text = incoming_msg.to_text().unwrap();
-        // let value: Value = serde_json::from_str(text).unwrap();
-        info!("incoming_msg: {:?}", incoming_msg);
-        // let project = value.pointer("payload/data/projectChanged").unwrap();
-        // let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
-        // PROJECTS::add(item.hash(), item.query_endpoint);
+        let text = incoming_msg.to_text().unwrap();
+        let value: Value = serde_json::from_str(text).unwrap();
+        let project = value.pointer("/payload/data/projectChanged").unwrap();
+        let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
+        PROJECTS::add(item.hash(), item.query_endpoint);
 
         if CommandLineArgs::debug() {
             info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
