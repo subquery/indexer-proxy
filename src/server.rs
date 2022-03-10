@@ -68,7 +68,7 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
     };
 
     let token = auth::create_jwt(user).map_err(|e| reject::custom(e))?;
-    return Ok(reply::json(&QueryToken { token }));
+    Ok(reply::json(&QueryToken { token }))
 }
 
 pub async fn query_handler(id: String, body: QueryBody) -> WebResult<impl Reply> {

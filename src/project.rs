@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::thread;
 use tracing::info;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{connect, Message};
@@ -88,7 +89,14 @@ pub async fn init_projects(url: &str) {
     }
 }
 
-pub fn subscribe_project_change(url: &str) {
+pub fn subscribe() {
+    thread::spawn(move || {
+        let url = CommandLineArgs::service_url();
+        subscribe_project_change(url.as_str());
+    });
+}
+
+fn subscribe_project_change(url: &str) {
     let mut websocket_url = url.to_owned();
     websocket_url.replace_range(0..4, "ws");
 

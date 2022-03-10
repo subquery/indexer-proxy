@@ -18,6 +18,6 @@ async fn main() {
     tracing_subscriber::fmt().init();
     project::validate_service_url(&service_url).await;
     project::init_projects(&service_url).await;
-    project::subscribe_project_change(&service_url);
-    server::start_server(&host, port).await
+    project::subscribe();
+    server::start_server(&host, port).await;
 }
