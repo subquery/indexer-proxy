@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          platforms: amd64
+          platforms: arm64,amd64
           file: ./Dockerfile
           tags: onfinality/subql-indexer-proxy:v${{ steps.fetch-version.outputs.VERSION }}
           build-args: RELEASE_VERSION=${{ steps.fetch-version.outputs.VERSION }}
@@ -50,7 +50,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          platforms: amd64
+          platforms: arm64,amd64
           file: ./Dockerfile
           tags: onfinality/subql-indexer-proxy:v${{ steps.fetch-version.outputs.VERSION }},onfinality/subql-indexer-proxy:latest
           build-args: RELEASE_VERSION=${{ steps.fetch-version.outputs.VERSION }}
