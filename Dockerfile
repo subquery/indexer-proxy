@@ -1,8 +1,6 @@
 # Builder
 FROM rust:1.59.0 AS builder
 
-RUN rustup target add x86_64-unknown-linux-musl
-RUN apt update && apt install -y musl-tools musl-dev pkg-config libssl-dev
 RUN update-ca-certificates
 
 # Create appuser
@@ -23,21 +21,28 @@ WORKDIR /subql
 
 COPY ./ .
 
-RUN cargo build --target x86_64-unknown-linux-musl --release
+RUN cargo build --release
 
 # Final image
-FROM scratch
-
-# Import from builder.
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+FROM debian:buster-slim
 
 WORKDIR /subql
 
 # Copy our build
-COPY --from=builder /subql/target/x86_64-unknown-linux-musl/release/subql-proxy .
+COPY --from=builder /subql/target/release/subql-proxy .
 
 # Use an unprivileged user.
+RUN groupadd --gid 10001 subql && \
+    useradd  --home-dir /subql \
+             --create-home \
+             --shell /bin/bash \
+             --gid subql \
+             --groups subql \
+             --uid 10000 subql
+RUN mkdir -p /subql/.local/share && \
+	mkdir /subql/data && \
+	chown -R subql:subql /subql && \
+	ln -s /subql/data /subql/.local/share
 USER subql:subql
 
 ENTRYPOINT ["./subql-proxy"]
