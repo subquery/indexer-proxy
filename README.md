@@ -50,6 +50,30 @@ Response:
 }
 ```
 
+### `/metadata/${deployment_id}`
+
+```sh
+curl -i -X GET http://127.0.0.1:8003/metadata/QmaPNri6zia4iNHFSr72QcEWieCtss2KqCBVMXytf3m8yV
+```
+
+Response:
+
+```json
+{"data":
+  {"_metadata":{
+    "chain":"Polkadot",
+    "genesisHash":"0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3","indexerHealthy":true,
+    "indexerNodeVersion":"0.29.1",
+    "lastProcessedHeight":121743,
+    "lastProcessedTimestamp":"1647831789324",
+    "queryNodeVersion":"0.12.0",
+    "specName":"polkadot",
+    "targetHeight":9520539
+    }
+  }
+}
+```
+
 ### `/query/${deployment_id}`
 
 #### Normal Query
