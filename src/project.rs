@@ -74,12 +74,17 @@ pub async fn init_projects(url: &str) {
 
     match result {
         Ok(value) => {
-            let v_d = value.pointer("/data").unwrap();
-            let v_str = serde_json::to_string(v_d).unwrap();
-            let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
-            for item in v.get_alive_projects {
-                PROJECTS::add(item.hash(), item.query_endpoint);
+            match value.pointer("/data") {
+                Some(v_d) => {
+                    let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
+                    let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
+                    for item in v.get_alive_projects {
+                        PROJECTS::add(item.hash(), item.query_endpoint);
+                    }
+                }
+                _ => {}
             }
+            // let v_d = value.pointer("/data").unwrap_or_else(|| );
         }
         Err(e) => println!("Init projects failed: {}", e),
     };
