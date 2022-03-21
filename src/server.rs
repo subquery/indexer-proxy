@@ -6,9 +6,11 @@ use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
 use crate::auth::User;
+use crate::constants::METADATA_QUERY;
 use crate::error;
 use crate::project::PROJECTS;
 use crate::request::graphql_request;
+use crate::request::GraphQLQuery;
 use crate::request::QueryBody;
 use crate::traits::Hash;
 use crate::types::WebResult;
@@ -45,8 +47,15 @@ pub async fn start_server(host: &str, port: u16) {
         .and(warp::body::json())
         .and_then(query_handler);
 
+    let metadata_route = warp::path!("metadata" / String)
+        .and(warp::get())
+        .and_then(metadata_handler);
+
     // chain the routes
-    let routes = token_route.or(query_route).recover(error::handle_rejection);
+    let routes = token_route
+        .or(query_route)
+        .or(metadata_route)
+        .recover(error::handle_rejection);
     let cors = warp::cors()
         .allow_any_origin()
         .allow_header("content-type")
@@ -78,6 +87,20 @@ pub async fn query_handler(id: String, body: QueryBody) -> WebResult<impl Reply>
     };
 
     let response = graphql_request(&query_url, body.query).await;
+    match response {
+        Ok(result) => Ok(reply::json(&result)),
+        Err(e) => Err(reject::custom(e)),
+    }
+}
+
+pub async fn metadata_handler(id: String) -> WebResult<impl Reply> {
+    let query_url = match PROJECTS::get(&id.hash()) {
+        Ok(url) => url,
+        Err(e) => return Err(reject::custom(e)),
+    };
+
+    let query = GraphQLQuery::new(METADATA_QUERY.to_string());
+    let response = graphql_request(&query_url, query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),
