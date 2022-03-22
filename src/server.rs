@@ -10,8 +10,6 @@ use crate::constants::METADATA_QUERY;
 use crate::error;
 use crate::project::PROJECTS;
 use crate::request::graphql_request;
-use crate::request::GraphQLQuery;
-use crate::request::QueryBody;
 use crate::traits::Hash;
 use crate::types::WebResult;
 
@@ -80,13 +78,13 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
     Ok(reply::json(&QueryToken { token }))
 }
 
-pub async fn query_handler(id: String, body: QueryBody) -> WebResult<impl Reply> {
+pub async fn query_handler(id: String, query: String) -> WebResult<impl Reply> {
     let query_url = match PROJECTS::get(&id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let response = graphql_request(&query_url, body.query).await;
+    let response = graphql_request(&query_url, &query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),
@@ -99,8 +97,7 @@ pub async fn metadata_handler(id: String) -> WebResult<impl Reply> {
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let query = GraphQLQuery::new(METADATA_QUERY.to_string());
-    let response = graphql_request(&query_url, query).await;
+    let response = graphql_request(&query_url, METADATA_QUERY).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),

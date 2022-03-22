@@ -23,14 +23,14 @@ impl warp::reject::Reject for GraphQLServerError {}
 impl fmt::Display for GraphQLServerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            GraphQLServerError::ClientError(ref s) => {
-                write!(f, "GraphQL server error (client error): {}", s)
+            GraphQLServerError::ClientError(ref e) => {
+                write!(f, "GraphQL server error (client error): {}", e)
             }
             GraphQLServerError::QueryError(ref e) => {
                 write!(f, "GraphQL server error (query error): {}", e)
             }
-            GraphQLServerError::InternalError(ref s) => {
-                write!(f, "GraphQL server error (internal error): {}", s)
+            GraphQLServerError::InternalError(ref e) => {
+                write!(f, "GraphQL server error (internal error): {}", e)
             }
         }
     }
@@ -82,9 +82,10 @@ lazy_static! {
 }
 
 // TODO: reorganise the errors
-pub async fn graphql_request(uri: &str, query: GraphQLQuery) -> Result<Value, GraphQLServerError> {
-    let body = serde_json::to_string(&query)
-        .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
+pub async fn graphql_request(uri: &str, query: &str) -> Result<Value, GraphQLServerError> {
+    // let body = serde_json::to_string(&query)
+    //     .map_err(|e| GraphQLServerError::ClientError(format!("Invalid query body: {}", e)))?;
+    let body = query.to_string();
 
     let response_result = REQUEST_CLIENT
         .post(uri)
