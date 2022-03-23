@@ -12,7 +12,7 @@ use tungstenite::{connect, Message};
 
 use crate::cli::CommandLineArgs;
 use crate::error::Error;
-use crate::request::{graphql_request, GraphQLQuery};
+use crate::request::graphql_request;
 
 lazy_static! {
     pub static ref PROJECTS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
@@ -54,23 +54,22 @@ impl ProjectItem {
 }
 
 pub async fn validate_service_url(url: &str) {
-    let query_string = String::from("query { accountMetadata { indexer } }");
-    let query = GraphQLQuery::new(query_string);
-    let result = graphql_request(url, query).await;
+    let query = json!({ "query": "query { accountMetadata { indexer } }" }).to_string();
+    let result = graphql_request(url, &query).await;
 
     match result {
-        Ok(value) => {
-            let _ = value.pointer("/data/accountMetadata/indexer").unwrap();
-        }
-        Err(e) => panic!("Invalid service url: {}, error: {}", url, e),
+        Ok(value) => match value.pointer("/data/accountMetadata/indexer") {
+            Some(_) => info!("Connect with coordinator service successfully"),
+            None => panic!("Invalid coordinator service url: {}", value),
+        },
+        Err(e) => panic!("Invalid coordinator service url: {}, error: {}", url, e),
     };
 }
 
 pub async fn init_projects(url: &str) {
     // graphql query for getting alive projects
-    let query_string = String::from("query { getAliveProjects { id queryEndpoint } }");
-    let query = GraphQLQuery::new(query_string);
-    let result = graphql_request(url, query).await;
+    let query = json!({ "query": "query { getAliveProjects { id queryEndpoint } }" }).to_string();
+    let result = graphql_request(url, &query).await;
 
     match result {
         Ok(value) => {
