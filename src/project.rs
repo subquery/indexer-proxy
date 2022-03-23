@@ -54,7 +54,6 @@ impl ProjectItem {
 }
 
 pub async fn validate_service_url(url: &str) {
-    // let query_test = String::from("{\"query\": \"query { accountMetadata { indexer } }\"}");
     let query = json!({ "query": "query { accountMetadata { indexer } }" }).to_string();
     let result = graphql_request(url, &query).await;
 

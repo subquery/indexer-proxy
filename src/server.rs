@@ -2,6 +2,7 @@
 use std::net::Ipv4Addr;
 
 use serde::Serialize;
+use serde_json::Value;
 use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
@@ -12,9 +13,6 @@ use crate::project::PROJECTS;
 use crate::request::graphql_request;
 use crate::traits::Hash;
 use crate::types::WebResult;
-
-// TODO: refactor to separate `mod`
-// mod `handlers` | mod `filters` -> routes |
 
 #[derive(Serialize)]
 pub struct QueryUri {
@@ -78,13 +76,13 @@ pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
     Ok(reply::json(&QueryToken { token }))
 }
 
-pub async fn query_handler(id: String, query: String) -> WebResult<impl Reply> {
+pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
     let query_url = match PROJECTS::get(&id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let response = graphql_request(&query_url, &query).await;
+    let response = graphql_request(&query_url, &query.to_string()).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),

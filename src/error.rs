@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::convert::Infallible;
+use std::fmt;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
 
@@ -63,4 +64,38 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
     });
 
     Ok(warp::reply::with_status(json, code))
+}
+
+#[derive(Debug)]
+pub enum GraphQLServerError {
+    QueryError(String),
+    InternalError(String),
+}
+
+impl warp::reject::Reject for GraphQLServerError {}
+
+impl fmt::Display for GraphQLServerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            GraphQLServerError::QueryError(ref e) => {
+                write!(f, "GraphQL server error (query error): {}", e)
+            }
+            GraphQLServerError::InternalError(ref e) => {
+                write!(f, "GraphQL server error (internal error): {}", e)
+            }
+        }
+    }
+}
+
+impl std::error::Error for GraphQLServerError {
+    fn description(&self) -> &str {
+        "Failed to process the GraphQL request"
+    }
+
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        match *self {
+            GraphQLServerError::QueryError(_) => None,
+            GraphQLServerError::InternalError(_) => None,
+        }
+    }
 }
