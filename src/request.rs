@@ -26,7 +26,7 @@ lazy_static! {
 }
 
 // TODO: reorganise the errors
-pub async fn graphql_request(uri: &str, query: &str) -> Result<Value, GraphQLServerError> {
+pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLServerError> {
     let response_result = REQUEST_CLIENT
         .post(uri)
         .header(CONTENT_TYPE, APPLICATION_JSON)

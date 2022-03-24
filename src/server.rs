@@ -2,14 +2,14 @@
 use std::net::Ipv4Addr;
 
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
 use crate::auth::User;
-use crate::constants::METADATA_QUERY;
 use crate::error;
 use crate::project::PROJECTS;
+use crate::query::METADATA_QUERY;
 use crate::request::graphql_request;
 use crate::traits::Hash;
 use crate::types::WebResult;
@@ -82,7 +82,7 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let response = graphql_request(&query_url, &query.to_string()).await;
+    let response = graphql_request(&query_url, &query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),
@@ -95,7 +95,8 @@ pub async fn metadata_handler(id: String) -> WebResult<impl Reply> {
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let response = graphql_request(&query_url, METADATA_QUERY).await;
+    let query = json!({ "query": METADATA_QUERY });
+    let response = graphql_request(&query_url, &query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),

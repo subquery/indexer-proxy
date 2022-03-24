@@ -3,6 +3,7 @@ mod cli;
 mod constants;
 mod error;
 mod project;
+mod query;
 mod request;
 mod server;
 mod tools;

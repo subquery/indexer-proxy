@@ -54,7 +54,7 @@ impl ProjectItem {
 }
 
 pub async fn validate_service_url(url: &str) {
-    let query = json!({ "query": "query { accountMetadata { indexer } }" }).to_string();
+    let query = json!({"query": "query { accountMetadata { indexer } }" });
     let result = graphql_request(url, &query).await;
 
     match result {
@@ -68,7 +68,7 @@ pub async fn validate_service_url(url: &str) {
 
 pub async fn init_projects(url: &str) {
     // graphql query for getting alive projects
-    let query = json!({ "query": "query { getAliveProjects { id queryEndpoint } }" }).to_string();
+    let query = json!({ "query": "query { getAliveProjects { id queryEndpoint } }" });
     let result = graphql_request(url, &query).await;
 
     match result {
