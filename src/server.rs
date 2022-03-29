@@ -7,6 +7,7 @@ use warp::{reject, reply, Filter, Reply};
 
 use crate::auth;
 use crate::auth::User;
+use crate::constants::HEADERS;
 use crate::error;
 use crate::project::PROJECTS;
 use crate::query::METADATA_QUERY;
@@ -54,7 +55,7 @@ pub async fn start_server(host: &str, port: u16) {
         .recover(error::handle_rejection);
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_header("content-type")
+        .allow_headers(HEADERS)
         .allow_methods(vec!["GET", "POST"]);
 
     let ip_address: Ipv4Addr = host.parse().unwrap_or(Ipv4Addr::LOCALHOST);
@@ -82,7 +83,11 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let response = graphql_request(&query_url, &query).await;
+    println!("{}", query_url);
+
+    let url = "http://localhost:3001/graphql";
+
+    let response = graphql_request(url, &query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),
