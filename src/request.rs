@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
 
-use crate::error::GraphQLServerError;
+use crate::{
+    constants::{APPLICATION_JSON, CONTENT_TYPE},
+    error::GraphQLServerError,
+};
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
@@ -26,6 +29,7 @@ lazy_static! {
 pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLServerError> {
     let response_result = REQUEST_CLIENT
         .post(uri)
+        .header(CONTENT_TYPE, APPLICATION_JSON)
         .body(query.to_string())
         .send()
         .await;

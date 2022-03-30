@@ -83,11 +83,7 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
         Err(e) => return Err(reject::custom(e)),
     };
 
-    println!("{}", query_url);
-
-    let url = "http://localhost:3001/graphql";
-
-    let response = graphql_request(url, &query).await;
+    let response = graphql_request(&query_url, &query).await;
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),

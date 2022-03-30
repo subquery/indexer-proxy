@@ -133,3 +133,42 @@ curl -w $TIME_COST -i -X POST $URL \
       {"id":"2oaY38m69Ditx8Rft5kdXPZgtzwuvpx42oFnLBeUyzfa2XfH"}
     ]}}}
 ```
+
+### Query schema example
+
+```sh
+curl -i -X POST $URL -H 'Content-Type: application/json'  -d "{\"query\": \"{ \
+  __schema { \
+    queryType { \
+      name\
+    }\
+    mutationType { \
+      name\
+    }\
+    subscriptionType { \
+      name \
+    } \
+    types { \
+      kind \
+      name \
+      description \
+    } \
+    directives { \
+      name \
+      description \
+      locations \
+      args { \
+        name \
+        description \
+      } \
+    } \
+  } \
+}\"}"
+
+```
+
+**Response**:
+
+```json
+{"data":{"__schema":{"directives":[{"args":[{"description":"Included when true.","name":"if"}],"description":"Directs the executor to include this field or fragment only when the `if` argument is true.","locations":["FIELD","FRAGMENT_SPREAD","INLINE_FRAGMENT"],"name":"include"},{"args":[{"description":"Skipped when true.","name":"if"}],"description":"Directs the executor to skip this field or fragment when the `if` argument is true.","locations":["FIELD","FRAGMENT_SPREAD","INLINE_FRAGMENT"],"name":"skip"}}}},
+```
