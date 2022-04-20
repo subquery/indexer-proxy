@@ -7,6 +7,7 @@ use warp::{
     http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
     reject, Filter, Rejection,
 };
+use web3::signing::{keccak256, recover};
 
 use crate::types::WebResult;
 
@@ -14,35 +15,47 @@ const BEARER: &str = "Bearer ";
 // FIXME: use `secret_key` from commandline args
 const JWT_SECRET: &[u8] = b"secret";
 
-#[derive(Serialize, Deserialize)]
-pub struct User {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Payload {
     /// ethereum address
     pub user_id: String,
     /// deployment id for the proejct
     pub deployment_id: String,
+    /// signature of user
+    pub signature: String,
+    /// timestamp
+    pub timestamp: i64,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
-    /// query service user
-    user: User,
+    /// ethereum address
+    pub user_id: String,
+    /// deployment id for the proejct
+    pub deployment_id: String,
     /// token expiration
-    exp: usize,
+    exp: i64,
 }
 
 type RequestHeader = HeaderMap<HeaderValue>;
 
-pub fn create_jwt(user: User) -> Result<String> {
+pub fn create_jwt(payload: Payload) -> Result<String> {
     let expiration = Utc::now()
-        .checked_add_signed(chrono::Duration::days(1))
+        .checked_add_signed(chrono::Duration::hours(12))
         .expect("valid timestamp")
-        .timestamp();
+        .timestamp_millis();
 
-    let claims = Claims {
-        user,
-        exp: expiration as usize,
-    };
+    let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
+    if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 30000 {
+        return Err(Error::JWTTokenCreationError);
+    }
+
     let header = Header::new(Algorithm::HS512);
+    let claims = Claims {
+        user_id: payload.user_id,
+        deployment_id: payload.deployment_id,
+        exp: expiration,
+    };
 
     encode(&header, &claims, &EncodingKey::from_secret(JWT_SECRET))
         .map_err(|_| Error::JWTTokenCreationError)
@@ -64,24 +77,50 @@ async fn authorize(headers: RequestHeader) -> WebResult<String> {
             )
             .map_err(|_| reject::custom(Error::JWTTokenError))?;
 
-            Ok(decoded.claims.exp.to_string())
+            if decoded.claims.exp < Utc::now().timestamp_millis() {
+                return Err(reject::custom(Error::JWTTokenExpiredError));
+            }
+
+            Ok(decoded.claims.deployment_id)
         }
-        Err(_) => return Err(reject::custom(Error::NoPermissionError)),
+        Err(e) => return Err(reject::custom(e)),
     }
 }
 
 fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String> {
     let header = match headers.get(AUTHORIZATION) {
         Some(v) => v,
-        None => return Err(Error::NoAuthHeaderError),
+        None => return Err(Error::NoPermissionError),
     };
     let auth_header = match std::str::from_utf8(header.as_bytes()) {
         Ok(v) => v,
-        Err(_) => return Err(Error::NoAuthHeaderError),
+        Err(_) => return Err(Error::NoPermissionError),
     };
     if !auth_header.starts_with(BEARER) {
         return Err(Error::InvalidAuthHeaderError);
     }
 
     Ok(auth_header.trim_start_matches(BEARER).to_owned())
+}
+
+fn eth_message(message: String) -> [u8; 32] {
+    keccak256(
+        format!(
+            "{}{}{}",
+            "\x19Ethereum Signed Message:\n",
+            message.len(),
+            message
+        )
+        .as_bytes(),
+    )
+}
+
+fn verify_message(payload: &Payload) -> Result<bool> {
+    let message = format!("{}{}", payload.user_id, payload.deployment_id);
+    let msg = eth_message(message);
+    let sig = hex::decode(&payload.signature).unwrap();
+    let pubkey = recover(&msg, &sig[..64], 0).unwrap();
+    let address = format!("{:02X?}", pubkey);
+
+    Ok(address == payload.user_id.as_str().to_lowercase())
 }

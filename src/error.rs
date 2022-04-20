@@ -7,18 +7,16 @@ use warp::{http::StatusCode, Rejection, Reply};
 // TODO: reorganise the errors
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("jwt token not valid")]
+    #[error("invalid auth token")]
     JWTTokenError,
-    #[error("jwt token creation error")]
+    #[error("invalid payload to create token")]
     JWTTokenCreationError,
-    #[error("no auth header")]
-    NoAuthHeaderError,
     #[error("invalid auth header")]
     InvalidAuthHeaderError,
-    #[error("invalid auth token")]
+    #[error("permission deny")]
     NoPermissionError,
-    #[error("invalid query params")]
-    InvalidQueryParamsError,
+    #[error("token expired")]
+    JWTTokenExpiredError,
     #[error("invalid project id")]
     InvalidProejctId,
 }
@@ -39,10 +37,7 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             Error::InvalidProejctId => (StatusCode::BAD_REQUEST, e.to_string()),
             Error::NoPermissionError => (StatusCode::UNAUTHORIZED, e.to_string()),
             Error::JWTTokenError => (StatusCode::UNAUTHORIZED, e.to_string()),
-            Error::JWTTokenCreationError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_string(),
-            ),
+            Error::JWTTokenCreationError => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
             _ => (StatusCode::BAD_REQUEST, e.to_string()),
         }
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {

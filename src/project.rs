@@ -83,7 +83,6 @@ pub async fn init_projects(url: &str) {
                 }
                 _ => {}
             }
-            // let v_d = value.pointer("/data").unwrap_or_else(|| );
         }
         Err(e) => println!("Init projects failed: {}", e),
     };

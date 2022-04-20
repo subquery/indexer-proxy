@@ -36,10 +36,17 @@ OPTIONS:
 
 ## APIs
 
-### `/token?user_id=${user_id}&deployment_id=${id}`
+### `/token`
 
 ```sh
-curl -i -X GET http://127.0.0.1:8003/token?user_id="0x59ce189fd40611162017deb88d826C3485f41e0D"&deployment_id="QmdehxWNdDBNM5jXmb4qbCkGBpTW6ooVy17NYGoMEeowxt"
+curl -i -X POST http://127.0.0.1:8003/token \
+-H 'Content-Type: application/json' \
+-d "{
+  \"user_id\": \"0x7ADb4675B448295b6be86812DDC28F1B0E0Eb876\",
+  \"deployment_id\": \"QmTQTnBTcvv3Eb3M6neDiwuubWVDAoqyAgKmXtTtJKAHoH\",
+  \"signature\": \"923939c849a0116ba95c32661f6c3c706103c8f587177264d62a06aa4b4432bf26b6c1953d4cd67a8635da18c4343e821bb55f03085fff53c73f97aa15893a861b\",
+  \"timestamp\": 1650447316245
+}"
 ```
 
 Response:
@@ -81,7 +88,7 @@ Response:
 ```sh
 export TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjp7InVzZXJfaWQiOiIweGVlcmZzZGZkc2YiLCJkZXBsb3ltZW50X2lkIjoiMHg2YzgyMTI0MDhjM2M2MmZjNzhjYmZhOWQ2ZmU1ZmYzOTM0OGMxMDA5MTE0YTYzMTViMWUyMjU2NDU5MTM1MzQ4In0sImV4cCI6MTYzODg0MTIyN30.ZUiW_m3Li5eklc1cK5z2VOLVqlv9yPQ9ojHddegSiNKj5eEf8PoTsbzIKhHFkUkRtgArMTiJhmDRT_9L7vCKIg"
 
-export URL="http://127.0.0.1:8003/query/QmdehxWNdDBNM5jXmb4qbCkGBpTW6ooVy17NYGoMEeowxt"
+export URL="http://127.0.0.1:8003/query/QmTQTnBTcvv3Eb3M6neDiwuubWVDAoqyAgKmXtTtJKAHoH"
 
 
 curl -i -X POST $URL \

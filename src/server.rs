@@ -5,10 +5,9 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use warp::{reject, reply, Filter, Reply};
 
-use crate::auth;
-use crate::auth::User;
+use crate::auth::{self, with_auth};
 use crate::constants::HEADERS;
-use crate::error;
+use crate::error::{handle_rejection, Error};
 use crate::project::PROJECTS;
 use crate::query::METADATA_QUERY;
 use crate::request::graphql_request;
@@ -29,18 +28,14 @@ pub struct QueryToken {
 
 pub async fn start_server(host: &str, port: u16) {
     // create routes
-    let token_query = warp::query::<User>()
-        .map(Some)
-        .or_else(|_| async { Ok::<(Option<User>,), std::convert::Infallible>((None,)) });
-
     let token_route = warp::path!("token")
-        .and(warp::get())
-        .and(token_query)
-        .and_then(get_token);
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(generate_token);
 
     let query_route = warp::path!("query" / String)
         .and(warp::post())
-        // .and(with_auth()) // temporary disabled the auth check
+        .and(with_auth())
         .and(warp::body::json())
         .and_then(query_handler);
 
@@ -52,7 +47,7 @@ pub async fn start_server(host: &str, port: u16) {
     let routes = token_route
         .or(query_route)
         .or(metadata_route)
-        .recover(error::handle_rejection);
+        .recover(handle_rejection);
     let cors = warp::cors()
         .allow_any_origin()
         .allow_headers(HEADERS)
@@ -62,22 +57,26 @@ pub async fn start_server(host: &str, port: u16) {
     warp::serve(routes.with(cors)).run((ip_address, port)).await;
 }
 
-pub async fn get_token(request_praram: Option<User>) -> WebResult<impl Reply> {
-    let user = match request_praram {
-        Some(user) => user,
-        None => return Err(reject::custom(error::Error::InvalidQueryParamsError)),
-    };
-
-    let _ = match PROJECTS::get(&user.deployment_id.hash()) {
+pub async fn generate_token(payload: auth::Payload) -> WebResult<impl Reply> {
+    // TODO: request to coordiantor service to verify the account has valid service agreement with indexer
+    let _ = match PROJECTS::get(&payload.deployment_id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
 
-    let token = auth::create_jwt(user).map_err(|e| reject::custom(e))?;
+    let token = auth::create_jwt(payload).map_err(|e| reject::custom(e))?;
     Ok(reply::json(&QueryToken { token }))
 }
 
-pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
+pub async fn query_handler(
+    id: String,
+    deployment_id: String,
+    query: Value,
+) -> WebResult<impl Reply> {
+    if id != deployment_id {
+        return Err(reject::custom(Error::JWTTokenError));
+    };
+
     let query_url = match PROJECTS::get(&id.hash()) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
