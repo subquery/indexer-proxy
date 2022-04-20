@@ -33,6 +33,8 @@ struct Claims {
     pub user_id: String,
     /// deployment id for the proejct
     pub deployment_id: String,
+    /// issue timestamp
+    pub iat: i64,
     /// token expiration
     exp: i64,
 }
@@ -54,6 +56,7 @@ pub fn create_jwt(payload: Payload) -> Result<String> {
     let claims = Claims {
         user_id: payload.user_id,
         deployment_id: payload.deployment_id,
+        iat: payload.timestamp,
         exp: expiration,
     };
 
@@ -116,7 +119,10 @@ fn eth_message(message: String) -> [u8; 32] {
 }
 
 fn verify_message(payload: &Payload) -> Result<bool> {
-    let message = format!("{}{}", payload.user_id, payload.deployment_id);
+    let message = format!(
+        "{}{}{}",
+        payload.user_id, payload.deployment_id, payload.timestamp
+    );
     let msg = eth_message(message);
     let sig = hex::decode(&payload.signature).unwrap();
     let pubkey = recover(&msg, &sig[..64], 0).unwrap();
