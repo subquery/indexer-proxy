@@ -48,7 +48,7 @@ pub fn create_jwt(payload: Payload) -> Result<String> {
         .timestamp_millis();
 
     let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
-    if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 30000 {
+    if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
         return Err(Error::JWTTokenCreationError);
     }
 
@@ -125,7 +125,7 @@ fn verify_message(payload: &Payload) -> Result<bool> {
     );
     let msg = eth_message(message);
     let sig = hex::decode(&payload.signature).unwrap();
-    let pubkey = recover(&msg, &sig[..64], 0).unwrap();
+    let pubkey = recover(&msg, &sig[..64], 1280).unwrap();
     let address = format!("{:02X?}", pubkey);
 
     Ok(address == payload.user_id.as_str().to_lowercase())
