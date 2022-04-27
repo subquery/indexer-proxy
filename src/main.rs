@@ -1,8 +1,10 @@
+mod account;
 mod auth;
 mod cli;
 mod constants;
 mod error;
 mod project;
+mod prometheus;
 mod query;
 mod request;
 mod server;
@@ -17,8 +19,9 @@ async fn main() {
     let host = cli::CommandLineArgs::host();
 
     tracing_subscriber::fmt().init();
-    project::validate_service_url(&service_url).await;
+    project::validate_service_url().await;
     project::init_projects(&service_url).await;
+
     project::subscribe();
     server::start_server(&host, port).await;
 }

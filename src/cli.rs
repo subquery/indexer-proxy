@@ -22,6 +22,12 @@ pub struct CommandLineArgs {
     /// IP address for the server
     #[structopt(long = "host", default_value = "127.0.0.1")]
     pub host: String,
+    /// Pushgateway endpoint
+    #[structopt(
+        long = "pushgateway-url",
+        default_value = "https://pushgateway-dev.onfinality.me"
+    )]
+    pub pushgateway_url: String,
 }
 
 impl CommandLineArgs {
@@ -43,5 +49,9 @@ impl CommandLineArgs {
 
     pub fn debug() -> bool {
         CommandLineArgs::from_args().debug
+    }
+
+    pub fn pushgateway_url() -> String {
+        CommandLineArgs::from_args().pushgateway_url
     }
 }

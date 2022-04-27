@@ -1,6 +1,6 @@
 [package]
 name = "subql-proxy"
-version = "0.1.6-1"
+version = "0.1.6-2"
 edition = "2018"
 default-run = "subql-proxy"
 
@@ -29,6 +29,7 @@ blake3="1.2.0"
 openssl = { version = "0.10", features = ["vendored"] }
 web3 = "0.18.0"
 hex = "0.4.3"
+prometheus = { version = "0.13.0", features = ["push"] }
 
 [profile.release]
 lto = true

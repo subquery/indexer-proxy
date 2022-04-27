@@ -1,6 +1,6 @@
 pub const APPLICATION_JSON: &str = "application/json";
 
-pub const CONTENT_TYPE: &str = "Content-Type";
+pub const KEEP_ALIVE: &str = "Keep-Alive";
 
 pub const HEADERS: [&'static str; 5] = [
     "content-type",

@@ -1,4 +1,3 @@
-use blake3;
 use lazy_static::lazy_static;
 use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
@@ -10,6 +9,7 @@ use tracing::info;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{connect, Message};
 
+use crate::account;
 use crate::cli::CommandLineArgs;
 use crate::error::Error;
 use crate::request::graphql_request;
@@ -47,23 +47,11 @@ struct ProjectItem {
     query_endpoint: String,
 }
 
-impl ProjectItem {
-    fn hash(&self) -> String {
-        blake3::hash(self.id.as_bytes()).to_string()
+pub async fn validate_service_url() {
+    match account::fetch_account_metadata().await {
+        Ok(_) => info!("Connect with coordinator service successfully"),
+        Err(e) => panic!("Invalid coordinator service url with error: {}", e),
     }
-}
-
-pub async fn validate_service_url(url: &str) {
-    let query = json!({"query": "query { accountMetadata { indexer } }" });
-    let result = graphql_request(url, &query).await;
-
-    match result {
-        Ok(value) => match value.pointer("/data/accountMetadata/indexer") {
-            Some(_) => info!("Connect with coordinator service successfully"),
-            None => panic!("Invalid coordinator service url: {}", value),
-        },
-        Err(e) => panic!("Invalid coordinator service url: {}, error: {}", url, e),
-    };
 }
 
 pub async fn init_projects(url: &str) {
@@ -72,18 +60,16 @@ pub async fn init_projects(url: &str) {
     let result = graphql_request(url, &query).await;
 
     match result {
-        Ok(value) => {
-            match value.pointer("/data") {
-                Some(v_d) => {
-                    let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
-                    let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
-                    for item in v.get_alive_projects {
-                        PROJECTS::add(item.hash(), item.query_endpoint);
-                    }
+        Ok(value) => match value.pointer("/data") {
+            Some(v_d) => {
+                let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
+                let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
+                for item in v.get_alive_projects {
+                    PROJECTS::add(item.id, item.query_endpoint);
                 }
-                _ => {}
             }
-        }
+            _ => {}
+        },
         Err(e) => println!("Init projects failed: {}", e),
     };
 
@@ -125,7 +111,7 @@ fn subscribe_project_change(url: &str) {
         let value: Value = serde_json::from_str(text).unwrap();
         let project = value.pointer("/payload/data/projectChanged").unwrap();
         let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
-        PROJECTS::add(item.hash(), item.query_endpoint);
+        PROJECTS::add(item.id, item.query_endpoint);
 
         if CommandLineArgs::debug() {
             info!("indexing projects: {:?}", PROJECTS.lock().unwrap());

@@ -1,11 +1,14 @@
 use lazy_static::lazy_static;
-use reqwest::Client;
+use reqwest::{
+    header::{CONNECTION, CONTENT_TYPE},
+    Client,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
 
 use crate::{
-    constants::{APPLICATION_JSON, CONTENT_TYPE},
+    constants::{APPLICATION_JSON, KEEP_ALIVE},
     error::GraphQLServerError,
 };
 
@@ -25,11 +28,11 @@ lazy_static! {
     pub static ref REQUEST_CLIENT: Client = reqwest::Client::new();
 }
 
-// TODO: reorganise the errors
 pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLServerError> {
     let response_result = REQUEST_CLIENT
         .post(uri)
         .header(CONTENT_TYPE, APPLICATION_JSON)
+        .header(CONNECTION, KEEP_ALIVE)
         .body(query.to_string())
         .send()
         .await;

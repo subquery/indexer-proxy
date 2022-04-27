@@ -2,7 +2,10 @@ use serde::Serialize;
 use std::convert::Infallible;
 use std::fmt;
 use thiserror::Error;
+use tracing::error;
 use warp::{http::StatusCode, Rejection, Reply};
+
+use crate::cli;
 
 // TODO: reorganise the errors
 #[derive(Error, Debug)]
@@ -19,6 +22,8 @@ pub enum Error {
     JWTTokenExpiredError,
     #[error("invalid project id")]
     InvalidProejctId,
+    #[error("invalid coordinator service endpoint")]
+    InvalidServiceEndpoint,
 }
 
 #[derive(Serialize, Debug)]
@@ -46,7 +51,10 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             "Method Not Allowed".to_string(),
         )
     } else {
-        eprintln!("unhandled error: {:?}", err);
+        if cli::CommandLineArgs::debug() {
+            error!("{:?}", err);
+        }
+
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal Server Error".to_string(),
