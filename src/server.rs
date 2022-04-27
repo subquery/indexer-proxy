@@ -81,7 +81,6 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
     prometheus::push_query_metrics(id.to_owned());
 
     let response = graphql_request(&query_url, &query).await;
-    info!("get the response");
     match response {
         Ok(result) => Ok(reply::json(&result)),
         Err(e) => Err(reject::custom(e)),
