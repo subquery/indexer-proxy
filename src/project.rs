@@ -72,18 +72,16 @@ pub async fn init_projects(url: &str) {
     let result = graphql_request(url, &query).await;
 
     match result {
-        Ok(value) => {
-            match value.pointer("/data") {
-                Some(v_d) => {
-                    let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
-                    let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
-                    for item in v.get_alive_projects {
-                        PROJECTS::add(item.hash(), item.query_endpoint);
-                    }
+        Ok(value) => match value.pointer("/data") {
+            Some(v_d) => {
+                let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
+                let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
+                for item in v.get_alive_projects {
+                    PROJECTS::add(item.hash(), item.query_endpoint);
                 }
-                _ => {}
             }
-        }
+            _ => {}
+        },
         Err(e) => println!("Init projects failed: {}", e),
     };
 
@@ -93,10 +91,15 @@ pub async fn init_projects(url: &str) {
 }
 
 pub fn subscribe() {
-    thread::spawn(move || {
+    let subscription = thread::spawn(move || {
         let url = CommandLineArgs::service_url();
         subscribe_project_change(url.as_str());
     });
+
+    match subscription.join() {
+        Ok(_) => info!("Receive message from websocket server"),
+        Err(_) => info!("Failed to connect with websocket server"),
+    }
 }
 
 fn subscribe_project_change(url: &str) {

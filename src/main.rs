@@ -3,6 +3,7 @@ mod cli;
 mod constants;
 mod error;
 mod project;
+mod prometheus;
 mod query;
 mod request;
 mod server;
@@ -19,6 +20,9 @@ async fn main() {
     tracing_subscriber::fmt().init();
     project::validate_service_url(&service_url).await;
     project::init_projects(&service_url).await;
+
+    prometheus::push_query_count();
+
     project::subscribe();
     server::start_server(&host, port).await;
 }
