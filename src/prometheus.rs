@@ -27,12 +27,11 @@ pub fn push_query_total(id: &str) {
     };
 
     QUERY_COUNTER.inc();
-    prometheus::push_metrics(
+    let _ = prometheus::push_metrics(
         "subql_network_query",
         groupings,
         &url,
         prometheus::gather(),
         None,
-    )
-    .unwrap();
+    );
 }

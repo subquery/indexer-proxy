@@ -1,4 +1,3 @@
-use blake3;
 use lazy_static::lazy_static;
 use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
@@ -48,12 +47,6 @@ struct ProjectItem {
     query_endpoint: String,
 }
 
-impl ProjectItem {
-    fn hash(&self) -> String {
-        blake3::hash(self.id.as_bytes()).to_string()
-    }
-}
-
 pub async fn validate_service_url() {
     match account::fetch_account_metadata().await {
         Ok(_) => info!("Connect with coordinator service successfully"),
@@ -72,7 +65,7 @@ pub async fn init_projects(url: &str) {
                 let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
                 let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
                 for item in v.get_alive_projects {
-                    PROJECTS::add(item.hash(), item.query_endpoint);
+                    PROJECTS::add(item.id, item.query_endpoint);
                 }
             }
             _ => {}
@@ -118,7 +111,7 @@ fn subscribe_project_change(url: &str) {
         let value: Value = serde_json::from_str(text).unwrap();
         let project = value.pointer("/payload/data/projectChanged").unwrap();
         let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
-        PROJECTS::add(item.hash(), item.query_endpoint);
+        PROJECTS::add(item.id, item.query_endpoint);
 
         if CommandLineArgs::debug() {
             info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
