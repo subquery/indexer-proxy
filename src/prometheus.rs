@@ -11,20 +11,25 @@ lazy_static! {
     .unwrap();
 }
 
-pub fn push_query_metrics() {
+pub fn push_query_metrics(id: String) {
     std::thread::spawn(move || {
-        push_query_total();
+        push_query_total(&id);
     });
 }
 
-pub fn push_query_total() {
+pub fn push_query_total(id: &str) {
     let url = cli::CommandLineArgs::pushgateway_url();
     let indexer = account::get_indexer();
+
+    let groupings = labels! {
+        "indexer".to_owned() => indexer.to_owned(),
+        "deployment_id".to_owned() => id.to_string().to_owned(),
+    };
 
     QUERY_COUNTER.inc();
     prometheus::push_metrics(
         "subql_network_query",
-        labels! {"indexer".to_owned() => indexer.to_owned()},
+        groupings,
         &url,
         prometheus::gather(),
         None,
