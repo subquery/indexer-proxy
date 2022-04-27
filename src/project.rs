@@ -10,6 +10,7 @@ use tracing::info;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{connect, Message};
 
+use crate::account;
 use crate::cli::CommandLineArgs;
 use crate::error::Error;
 use crate::request::graphql_request;
@@ -53,17 +54,11 @@ impl ProjectItem {
     }
 }
 
-pub async fn validate_service_url(url: &str) {
-    let query = json!({"query": "query { accountMetadata { indexer } }" });
-    let result = graphql_request(url, &query).await;
-
-    match result {
-        Ok(value) => match value.pointer("/data/accountMetadata/indexer") {
-            Some(_) => info!("Connect with coordinator service successfully"),
-            None => panic!("Invalid coordinator service url: {}", value),
-        },
-        Err(e) => panic!("Invalid coordinator service url: {}, error: {}", url, e),
-    };
+pub async fn validate_service_url() {
+    match account::fetch_account_metadata().await {
+        Ok(_) => info!("Connect with coordinator service successfully"),
+        Err(e) => panic!("Invalid coordinator service url with error: {}", e),
+    }
 }
 
 pub async fn init_projects(url: &str) {
@@ -91,15 +86,10 @@ pub async fn init_projects(url: &str) {
 }
 
 pub fn subscribe() {
-    let subscription = thread::spawn(move || {
+    thread::spawn(move || {
         let url = CommandLineArgs::service_url();
         subscribe_project_change(url.as_str());
     });
-
-    match subscription.join() {
-        Ok(_) => info!("Receive message from websocket server"),
-        Err(_) => info!("Failed to connect with websocket server"),
-    }
 }
 
 fn subscribe_project_change(url: &str) {

@@ -19,6 +19,8 @@ pub enum Error {
     JWTTokenExpiredError,
     #[error("invalid project id")]
     InvalidProejctId,
+    #[error("invalid coordinator service endpoint")]
+    InvalidServiceEndpoint,
 }
 
 #[derive(Serialize, Debug)]
