@@ -3,7 +3,6 @@ use std::net::Ipv4Addr;
 
 use serde::Serialize;
 use serde_json::{json, Value};
-use tracing::info;
 use warp::{reject, reply, Filter, Reply};
 
 use crate::auth::{self};
