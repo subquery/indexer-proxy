@@ -7,9 +7,6 @@ use structopt::StructOpt;
 )]
 
 pub struct CommandLineArgs {
-    /// enable debug mode
-    #[structopt(short = "d", long = "debug")]
-    pub debug: bool,
     /// Port the service will listen on
     #[structopt(short = "p", long = "port", default_value = "8003")]
     pub port: u16,
@@ -22,6 +19,12 @@ pub struct CommandLineArgs {
     /// IP address for the server
     #[structopt(long = "host", default_value = "127.0.0.1")]
     pub host: String,
+    /// enable auth
+    #[structopt(short = "a", long = "auth")]
+    pub auth: bool,
+    /// enable debug mode
+    #[structopt(short = "d", long = "debug")]
+    pub debug: bool,
     /// Pushgateway endpoint
     #[structopt(
         long = "pushgateway-url",
@@ -49,6 +52,10 @@ impl CommandLineArgs {
 
     pub fn debug() -> bool {
         CommandLineArgs::from_args().debug
+    }
+
+    pub fn auth() -> bool {
+        CommandLineArgs::from_args().auth
     }
 
     pub fn pushgateway_url() -> String {

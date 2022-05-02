@@ -1,4 +1,4 @@
-use crate::{error::Error, types::Result};
+use crate::{error::Error, types::Result, cli};
 use chrono::prelude::*;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -71,6 +71,10 @@ pub fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
 }
 
 async fn authorize(headers: RequestHeader) -> WebResult<String> {
+    if !cli::CommandLineArgs::auth() {
+        return Ok(String::from(""));
+    }
+
     match jwt_from_header(&headers) {
         Ok(jwt) => {
             let decoded = decode::<Claims>(

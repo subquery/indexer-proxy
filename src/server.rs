@@ -5,14 +5,14 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use warp::{reject, reply, Filter, Reply};
 
-use crate::auth::{self};
+use crate::auth::{self, with_auth};
 use crate::constants::HEADERS;
-use crate::error::handle_rejection;
+use crate::error::{handle_rejection, Error};
 use crate::project::PROJECTS;
 use crate::query::METADATA_QUERY;
 use crate::request::graphql_request;
 use crate::types::WebResult;
-use crate::{account, prometheus};
+use crate::{account, prometheus, cli};
 
 #[derive(Serialize)]
 pub struct QueryUri {
@@ -35,6 +35,7 @@ pub async fn start_server(host: &str, port: u16) {
 
     let query_route = warp::path!("query" / String)
         .and(warp::post())
+        .and(with_auth())
         .and(warp::body::json())
         .and_then(query_handler);
 
@@ -67,10 +68,10 @@ pub async fn generate_token(payload: auth::Payload) -> WebResult<impl Reply> {
     Ok(reply::json(&QueryToken { token }))
 }
 
-pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
-    // if id != deployment_id {
-    //     return Err(reject::custom(Error::JWTTokenError));
-    // };
+pub async fn query_handler(id: String, deployment_id: String, query: Value) -> WebResult<impl Reply> {
+    if cli::CommandLineArgs::auth() && id != deployment_id {
+        return Err(reject::custom(Error::JWTTokenError));
+    };
 
     let query_url = match PROJECTS::get(&id) {
         Ok(url) => url,
