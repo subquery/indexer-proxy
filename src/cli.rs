@@ -25,12 +25,9 @@ pub struct CommandLineArgs {
     /// enable debug mode
     #[structopt(short = "d", long = "debug")]
     pub debug: bool,
-    /// Pushgateway endpoint
-    #[structopt(
-        long = "pushgateway-url",
-        default_value = "https://pushgateway-kong-dev.onfinality.me"
-    )]
-    pub pushgateway_url: String,
+    /// enable dev mode
+    #[structopt(long = "dev")]
+    pub dev: bool,
 }
 
 impl CommandLineArgs {
@@ -42,9 +39,9 @@ impl CommandLineArgs {
         CommandLineArgs::from_args().service_url
     }
 
-    pub fn secret_key() -> String {
-        CommandLineArgs::from_args().secret_key
-    }
+    // pub fn secret_key() -> String {
+    //     CommandLineArgs::from_args().secret_key
+    // }
 
     pub fn host() -> String {
         CommandLineArgs::from_args().host
@@ -58,7 +55,7 @@ impl CommandLineArgs {
         CommandLineArgs::from_args().auth
     }
 
-    pub fn pushgateway_url() -> String {
-        CommandLineArgs::from_args().pushgateway_url
+    pub fn dev() -> bool {
+        CommandLineArgs::from_args().dev
     }
 }

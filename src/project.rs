@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::thread;
-use tracing::info;
+use tracing::{info, debug};
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{connect, Message};
 
@@ -73,9 +73,7 @@ pub async fn init_projects(url: &str) {
         Err(e) => println!("Init projects failed: {}", e),
     };
 
-    if CommandLineArgs::debug() {
-        info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
-    }
+    debug!("indexing projects: {:?}", PROJECTS.lock().unwrap());
 }
 
 pub fn subscribe() {
@@ -113,8 +111,6 @@ fn subscribe_project_change(url: &str) {
         let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
         PROJECTS::add(item.id, item.query_endpoint);
 
-        if CommandLineArgs::debug() {
-            info!("indexing projects: {:?}", PROJECTS.lock().unwrap());
-        }
+        debug!("indexing projects: {:?}", PROJECTS.lock().unwrap());
     }
 }

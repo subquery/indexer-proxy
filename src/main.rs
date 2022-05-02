@@ -1,3 +1,5 @@
+use tracing::Level;
+
 mod account;
 mod auth;
 mod cli;
@@ -17,8 +19,11 @@ async fn main() {
     let service_url = cli::CommandLineArgs::service_url();
     let port = cli::CommandLineArgs::port();
     let host = cli::CommandLineArgs::host();
+    let debug = cli::CommandLineArgs::debug();
 
-    tracing_subscriber::fmt().init();
+    let log_filter = if debug { Level::DEBUG } else { Level::INFO };
+    tracing_subscriber::fmt().with_max_level(log_filter).init();
+
     project::validate_service_url().await;
     project::init_projects(&service_url).await;
 
