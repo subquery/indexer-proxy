@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use serde_json::json;
+use tracing::info;
 use std::sync::Mutex;
 
 use crate::cli::CommandLineArgs;
@@ -21,13 +22,15 @@ pub async fn fetch_account_metadata() -> Result<String> {
     let query = json!({"query": "query { accountMetadata { indexer } }" });
     let result = graphql_request(&url, &query).await;
 
-    let indexer = match result {
+    let indexer: String = match result {
         Ok(value) => match value.pointer("/data/accountMetadata/indexer") {
-            Some(v_d) => serde_json::to_string(v_d).unwrap_or(String::from("")),
+            Some(v_d) =>  v_d.as_str().unwrap_or("").to_string(),
             None => return Err(Error::InvalidServiceEndpoint),
         },
         Err(_) => return Err(Error::InvalidServiceEndpoint),
     };
+
+    info!("indexer {}", indexer);
 
     if !indexer.is_empty() {
         ACCOUNT.lock().unwrap().indexer = Some(indexer.to_owned());

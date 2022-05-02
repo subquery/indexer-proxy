@@ -25,7 +25,7 @@ pub struct CommandLineArgs {
     /// Pushgateway endpoint
     #[structopt(
         long = "pushgateway-url",
-        default_value = "https://pushgateway-dev.onfinality.me"
+        default_value = "https://pushgateway-kong-dev.onfinality.me"
     )]
     pub pushgateway_url: String,
 }
