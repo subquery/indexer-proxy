@@ -34,7 +34,7 @@ pub fn push_query_total(id: &str) {
 
     QUERY_COUNTER.with_label_values(&[id]).inc();
 
-    let _ = prometheus::push_metrics(
+    let _ = prometheus::push_add_metrics(
         "subql_indexer_query",
         labels!{"instance".to_string() => indexer},
         &url,
