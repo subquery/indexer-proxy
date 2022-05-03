@@ -26,6 +26,12 @@ RUN cargo build --release
 # Final image
 FROM debian:buster-slim
 
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends ca-certificates
+RUN update-ca-certificates
+
+RUN apt-get --assume-yes install curl
+
 WORKDIR /subql
 
 # Copy our build
