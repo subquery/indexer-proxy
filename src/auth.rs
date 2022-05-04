@@ -1,7 +1,8 @@
-use crate::{error::Error, types::Result, cli};
+use crate::{cli, error::Error, types::Result};
 use chrono::prelude::*;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use warp::{
     filters::header::headers_cloned,
     http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
@@ -47,8 +48,13 @@ pub fn create_jwt(payload: Payload) -> Result<String> {
         .expect("valid timestamp")
         .timestamp_millis();
 
-    let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
-    if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
+    // FIXME: msg_verified not working -> recovery_id
+    // let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
+    // if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
+    //     return Err(Error::JWTTokenCreationError);
+    // }
+
+    if (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
         return Err(Error::JWTTokenCreationError);
     }
 
@@ -129,8 +135,10 @@ fn verify_message(payload: &Payload) -> Result<bool> {
     );
     let msg = eth_message(message);
     let sig = hex::decode(&payload.signature).unwrap();
-    let pubkey = recover(&msg, &sig[..64], 1280).unwrap();
+    let pubkey = recover(&msg, &sig[..64], 0).unwrap();
     let address = format!("{:02X?}", pubkey);
+
+    debug!("compare pubkey: {}", address);
 
     Ok(address == payload.user_id.as_str().to_lowercase())
 }
