@@ -49,12 +49,8 @@ pub fn create_jwt(payload: Payload) -> Result<String> {
         .timestamp_millis();
 
     // FIXME: msg_verified not working -> recovery_id
-    // let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
-    // if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
-    //     return Err(Error::JWTTokenCreationError);
-    // }
-
-    if (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
+    let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
+    if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
         return Err(Error::JWTTokenCreationError);
     }
 
@@ -135,7 +131,8 @@ fn verify_message(payload: &Payload) -> Result<bool> {
     );
     let msg = eth_message(message);
     let sig = hex::decode(&payload.signature).unwrap();
-    let pubkey = recover(&msg, &sig[..64], 0).unwrap();
+    let recover_id = sig[64] as i32 - 27;
+    let pubkey = recover(&msg, &sig[..64], recover_id).unwrap();
     let address = format!("{:02X?}", pubkey);
 
     debug!("compare pubkey: {}", address);
