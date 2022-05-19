@@ -1,4 +1,4 @@
-use crate::{cli, error::Error, types::Result};
+use crate::{cli, eip712::recover_signer, error::Error, types::Result};
 use chrono::prelude::*;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,6 @@ use warp::{
     http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
     reject, Filter, Rejection,
 };
-use web3::signing::{keccak256, recover};
 
 use crate::types::WebResult;
 
@@ -18,20 +17,26 @@ const JWT_SECRET: &[u8] = b"secret";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Payload {
-    /// ethereum address
-    pub user_id: String,
+    /// indexer address
+    pub indexer: String,
+    /// indexer address
+    pub consumer: Option<String>,
+    /// service agreement contract address
+    pub agreement: Option<String>,
     /// deployment id for the proejct
     pub deployment_id: String,
     /// signature of user
     pub signature: String,
     /// timestamp
     pub timestamp: i64,
+    /// chain id
+    pub chain_id: i64,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
     /// ethereum address
-    pub user_id: String,
+    pub indexer: String,
     /// deployment id for the proejct
     pub deployment_id: String,
     /// issue timestamp
@@ -48,15 +53,14 @@ pub fn create_jwt(payload: Payload) -> Result<String> {
         .expect("valid timestamp")
         .timestamp_millis();
 
-    // FIXME: msg_verified not working -> recovery_id
-    let msg_verified = verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
+    let msg_verified = true; // verify_message(&payload).map_err(|_| Error::JWTTokenCreationError)?;
     if !msg_verified || (Utc::now().timestamp_millis() - payload.timestamp).abs() > 120000 {
         return Err(Error::JWTTokenCreationError);
     }
 
     let header = Header::new(Algorithm::HS512);
     let claims = Claims {
-        user_id: payload.user_id,
+        indexer: payload.indexer,
         deployment_id: payload.deployment_id,
         iat: payload.timestamp,
         exp: expiration,
@@ -112,30 +116,18 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String> {
     Ok(auth_header.trim_start_matches(BEARER).to_owned())
 }
 
-fn eth_message(message: String) -> [u8; 32] {
-    keccak256(
-        format!(
-            "{}{}{}",
-            "\x19Ethereum Signed Message:\n",
-            message.len(),
-            message
-        )
-        .as_bytes(),
-    )
-}
-
 fn verify_message(payload: &Payload) -> Result<bool> {
     let message = format!(
         "{}{}{}",
-        payload.user_id, payload.deployment_id, payload.timestamp
+        payload.indexer, payload.deployment_id, payload.timestamp
     );
-    let msg = eth_message(message);
-    let sig = hex::decode(&payload.signature).unwrap();
-    let recover_id = sig[64] as i32 - 27;
-    let pubkey = recover(&msg, &sig[..64], recover_id).unwrap();
-    let address = format!("{:02X?}", pubkey);
+    let signer = recover_signer(message, &payload.signature).unwrap();
 
-    debug!("compare pubkey: {}", address);
+    debug!("compare pubkey: {}", signer);
 
-    Ok(address == payload.user_id.as_str().to_lowercase())
+    // TODO: verify message basing on the payload
+    // 1. if signer is indexer itself, return the token
+    // 2. if singer is consumer, check whether the agreement is expired and the it is consistent with `indexer` and `consumer`
+
+    Ok(signer == payload.indexer.as_str().to_lowercase())
 }

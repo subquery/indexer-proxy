@@ -4,6 +4,7 @@ mod account;
 mod auth;
 mod cli;
 mod constants;
+mod eip712;
 mod error;
 mod project;
 mod prometheus;
