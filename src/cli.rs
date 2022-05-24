@@ -22,6 +22,9 @@ pub struct CommandLineArgs {
     /// enable auth
     #[structopt(short = "a", long = "auth")]
     pub auth: bool,
+    /// auth token duration
+    #[structopt(long = "token-duration", default_value = "12")]
+    pub token_duration: i64,
     /// enable debug mode
     #[structopt(short = "d", long = "debug")]
     pub debug: bool,
@@ -53,6 +56,10 @@ impl CommandLineArgs {
 
     pub fn auth() -> bool {
         CommandLineArgs::from_args().auth
+    }
+
+    pub fn token_duration() -> i64 {
+        CommandLineArgs::from_args().token_duration
     }
 
     pub fn dev() -> bool {
