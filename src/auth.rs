@@ -1,4 +1,3 @@
-use crate::{cli, eip712::recover_signer, error::Error, types::Result};
 use chrono::prelude::*;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -10,6 +9,7 @@ use warp::{
 };
 
 use crate::types::WebResult;
+use crate::{cli::COMMAND, eip712::recover_signer, error::Error, types::Result};
 
 const BEARER: &str = "Bearer ";
 // FIXME: use `secret_key` from commandline args
@@ -77,7 +77,7 @@ pub fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
 }
 
 async fn authorize(headers: RequestHeader) -> WebResult<String> {
-    if !cli::CommandLineArgs::auth() {
+    if !COMMAND.auth() {
         return Ok(String::from(""));
     }
 

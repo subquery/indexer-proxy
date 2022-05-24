@@ -12,7 +12,7 @@ use crate::project::PROJECTS;
 use crate::query::METADATA_QUERY;
 use crate::request::graphql_request;
 use crate::types::WebResult;
-use crate::{account, prometheus, cli};
+use crate::{account, cli::COMMAND, prometheus};
 
 #[derive(Serialize)]
 pub struct QueryUri {
@@ -26,7 +26,7 @@ pub struct QueryToken {
     pub token: String,
 }
 
-pub async fn start_server(host: &str, port: u16) {
+pub async fn start_server(host: String, port: u16) {
     // create routes
     let token_route = warp::path!("token")
         .and(warp::post())
@@ -68,8 +68,12 @@ pub async fn generate_token(payload: auth::Payload) -> WebResult<impl Reply> {
     Ok(reply::json(&QueryToken { token }))
 }
 
-pub async fn query_handler(id: String, deployment_id: String, query: Value) -> WebResult<impl Reply> {
-    if cli::CommandLineArgs::auth() && id != deployment_id {
+pub async fn query_handler(
+    id: String,
+    deployment_id: String,
+    query: Value,
+) -> WebResult<impl Reply> {
+    if COMMAND.auth() && id != deployment_id {
         return Err(reject::custom(Error::JWTTokenError));
     };
 

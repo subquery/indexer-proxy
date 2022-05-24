@@ -5,12 +5,12 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::thread;
-use tracing::{info, debug};
-use tungstenite::client::IntoClientRequest;
-use tungstenite::{connect, Message};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::{connect, Message};
+use tracing::{debug, info};
 
 use crate::account;
-use crate::cli::CommandLineArgs;
+use crate::cli::COMMAND;
 use crate::error::Error;
 use crate::request::graphql_request;
 
@@ -78,7 +78,7 @@ pub async fn init_projects(url: &str) {
 
 pub fn subscribe() {
     thread::spawn(move || {
-        let url = CommandLineArgs::service_url();
+        let url = COMMAND.service_url();
         subscribe_project_change(url.as_str());
     });
 }

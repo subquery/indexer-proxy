@@ -5,7 +5,7 @@ use thiserror::Error;
 use tracing::error;
 use warp::{http::StatusCode, Rejection, Reply};
 
-use crate::cli;
+use crate::cli::COMMAND;
 
 // TODO: reorganise the errors
 #[derive(Error, Debug)]
@@ -51,7 +51,7 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             "Method Not Allowed".to_string(),
         )
     } else {
-        if cli::CommandLineArgs::debug() {
+        if COMMAND.debug() {
             error!("{:?}", err);
         }
 

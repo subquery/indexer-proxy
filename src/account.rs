@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 use serde_json::json;
-use tracing::info;
 use std::sync::Mutex;
+use tracing::info;
 
-use crate::cli::CommandLineArgs;
+use crate::cli::COMMAND;
 use crate::request::graphql_request;
 use crate::{error::Error, types::Result};
 
@@ -18,13 +18,13 @@ lazy_static! {
 }
 
 pub async fn fetch_account_metadata() -> Result<String> {
-    let url = CommandLineArgs::service_url();
+    let url = COMMAND.service_url();
     let query = json!({"query": "query { accountMetadata { indexer } }" });
     let result = graphql_request(&url, &query).await;
 
     let indexer: String = match result {
         Ok(value) => match value.pointer("/data/accountMetadata/indexer") {
-            Some(v_d) =>  v_d.as_str().unwrap_or("").to_string(),
+            Some(v_d) => v_d.as_str().unwrap_or("").to_string(),
             None => return Err(Error::InvalidServiceEndpoint),
         },
         Err(_) => return Err(Error::InvalidServiceEndpoint),

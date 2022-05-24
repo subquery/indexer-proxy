@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use prometheus::{labels, register_int_counter_vec, IntCounterVec};
 
-use crate::{account, cli::CommandLineArgs};
+use crate::{account, cli::COMMAND};
 
 lazy_static! {
     static ref QUERY_COUNTER: IntCounterVec = register_int_counter_vec!(
@@ -13,8 +13,8 @@ lazy_static! {
 }
 
 fn pushgateway_url() -> String {
-    let url = if CommandLineArgs::dev() {
-        "https://pushgateway-kong-dev.onfinality.me" 
+    let url = if COMMAND.dev() {
+        "https://pushgateway-kong-dev.onfinality.me"
     } else {
         "https://pushgateway.subquery.network"
     };
@@ -36,7 +36,7 @@ pub fn push_query_total(id: &str) {
 
     let _ = prometheus::push_add_metrics(
         "subql_indexer_query",
-        labels!{"instance".to_string() => indexer},
+        labels! {"instance".to_string() => indexer},
         &url,
         prometheus::gather(),
         None,
