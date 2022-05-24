@@ -44,15 +44,16 @@ async fn main() {
         let p2p_ws = COMMAND.ws();
 
         tokio::spawn(async move {
-            let _ = p2p::server::server(
+            p2p::server::server(
                 p2p_bind,
                 p2p_rpc,
                 p2p_ws,
                 std::path::PathBuf::from("indexer.key"), // DEBUG TODO
             )
-            .await;
+            .await
+            .unwrap();
         });
     }
 
-    tokio::spawn(server::start_server(host, port));
+    server::start_server(host, port).await;
 }
