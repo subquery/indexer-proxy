@@ -1,16 +1,19 @@
 use serde_json::{json, Value};
 
 use crate::p2p::behaviour::rpc::Response;
+use crate::project::PROJECTS;
 use crate::request::{graphql_request, REQUEST_CLIENT};
 
-pub async fn proxy_request(url: String, query: String) -> Response {
-    let res = graphql_request(&url, &json!({ "query": query })).await;
-    match res {
-        Ok(value) => match value.pointer("/data") {
-            Some(data) => Response::RawData(serde_json::to_string(data).unwrap()), // unwrap safe
-            _ => Response::Error("Data is missing".to_owned()),
+pub async fn proxy_request(project: String, query: String) -> Response {
+    match (PROJECTS::get(&project), serde_json::from_str(&query)) {
+        (Ok(url), Ok(query)) => match graphql_request(&url, &query).await {
+            Ok(value) => match value.pointer("/data") {
+                Some(data) => Response::RawData(serde_json::to_string(data).unwrap()),
+                _ => Response::Error("Data is missing".to_owned()),
+            },
+            Err(err) => Response::Error(err.to_string()),
         },
-        Err(err) => Response::Error(err.to_string()),
+        _ => Response::Error("Project is missing".to_owned()),
     }
 }
 

@@ -42,6 +42,7 @@ async fn main() {
         let p2p_bind = COMMAND.p2p();
         let p2p_rpc = COMMAND.rpc();
         let p2p_ws = COMMAND.ws();
+        info!("P2P bind: {}", p2p_bind);
 
         tokio::spawn(async move {
             p2p::server::server(

@@ -48,8 +48,8 @@ impl From<&str> for HttpMethod {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Request {
     /// consumer query info to indexer.
-    /// http method, http query path, json data. data sign.
-    Query(HttpMethod, String, String, String),
+    /// query project id, query info. query sign.
+    Query(String, String, String),
     /// state channel info.
     StateChannel(String),
 }

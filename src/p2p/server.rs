@@ -88,9 +88,8 @@ pub async fn server(
                             } => {
                                 debug!("Got request: {:?}", request);
                                 match request {
-                                    Request::Query(_method, _path, query, sign) => {
-                                        let res_data =
-                                            http::proxy_request(COMMAND.service_url(), query).await;
+                                    Request::Query(project, query, sign) => {
+                                        let res_data = http::proxy_request(project, query).await;
                                         let res_sign = if sign.len() > 0 {
                                             state_channel::handle_request(&sign).await
                                         } else {

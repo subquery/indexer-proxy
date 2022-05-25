@@ -35,23 +35,22 @@ pub fn init_rpc_handler() -> RpcHandler<State> {
     rpc_handler.add_method(
         "query",
         |params: Vec<RpcParam>, _state: Arc<State>| async move {
-            if params.len() != 4 && params.len() != 5 {
+            if params.len() != 3 && params.len() != 4 {
                 return Err(RpcError::ParseError);
             }
             let s = params[0].as_str().ok_or(RpcError::ParseError)?;
             let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
-            let method = params[1].as_str().ok_or(RpcError::ParseError)?.into();
-            let path = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
-            let query = params[3].as_str().ok_or(RpcError::ParseError)?.to_owned();
-            let sign = if params.len() == 5 {
-                params[4].as_str().ok_or(RpcError::ParseError)?.to_owned()
+            let project = params[1].as_str().ok_or(RpcError::ParseError)?.to_owned();
+            let query = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
+            let sign = if params.len() == 4 {
+                params[3].as_str().ok_or(RpcError::ParseError)?.to_owned()
             } else {
                 "".to_owned()
             };
 
             Ok(vec![Event::Request(
                 pid,
-                Request::Query(method, path, query, sign),
+                Request::Query(project, query, sign),
             )])
         },
     );
@@ -76,23 +75,23 @@ pub fn init_rpc_handler() -> RpcHandler<State> {
     rpc_handler.add_method(
         "query-sync",
         |params: Vec<RpcParam>, _state: Arc<State>| async move {
-            if params.len() != 4 && params.len() != 5 {
+            info!("params: {:?}", params);
+            if params.len() != 3 && params.len() != 4 {
                 return Err(RpcError::ParseError);
             }
             let s = params[0].as_str().ok_or(RpcError::ParseError)?;
             let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
-            let method = params[1].as_str().ok_or(RpcError::ParseError)?.into();
-            let path = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
-            let query = params[3].as_str().ok_or(RpcError::ParseError)?.to_owned();
-            let sign = if params.len() == 5 {
-                params[4].as_str().ok_or(RpcError::ParseError)?.to_owned()
+            let project = params[1].as_str().ok_or(RpcError::ParseError)?.to_owned();
+            let query = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
+            let sign = if params.len() == 4 {
+                params[3].as_str().ok_or(RpcError::ParseError)?.to_owned()
             } else {
                 "".to_owned()
             };
 
             Ok(vec![Event::RequestSync(
                 pid,
-                Request::Query(method, path, query, sign),
+                Request::Query(project, query, sign),
             )])
         },
     );
