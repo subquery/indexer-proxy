@@ -5,37 +5,58 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::thread;
+use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::{connect, Message};
 use tracing::{debug, info};
 
+use secp256k1::{SecretKey, ONE_KEY};
+use web3::{Address, SecretKeyRef};
+
+use crate::account;
 use crate::cli::COMMAND;
 use crate::error::Error;
 use crate::request::graphql_request;
 
-lazy_static! {
-    pub static ref PROJECTS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+pub struct Key {
+    pub indexer: Address,
+    pub controller: Address,
+    pub controller_sk: SecretKey,
 }
 
-impl PROJECTS {
-    pub fn add(deployment_id: String, url: String) {
-        let mut map = PROJECTS.lock().unwrap();
-        map.insert(deployment_id, url);
+impl Default for Key {
+    fn default() -> Self {
+        let controller_sk = ONE_KEY;
+        let controller = SecretKeyRef::new(&controller_sk).address();
+        Key {
+            indexer: Address::default(),
+            controller,
+            controller_sk,
+        }
     }
+}
 
-    pub fn get(key: &str) -> Result<String, Error> {
-        let map = PROJECTS.lock().unwrap();
-        let url = match map.get(key) {
-            Some(url) => url,
-            None => return Err(Error::InvalidProejctId),
+lazy_static! {
+    pub static ref KEY: RwLock<Key> = RwLock::new(Key::default());
+}
+
+impl KEY {
+    pub async fn update(indexer: Address, controller_sk: SecretKey) {
+        let controller = SecretKeyRef::new(&controller_sk).address();
+        let new_key = Key {
+            indexer,
+            controller,
+            controller_sk,
         };
-        Ok(url.to_owned())
+        let mut key = KEY.write().await;
+        *key = new_key;
+        drop(key);
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ProjectsResponse {
-    #[serde(rename = "getAliveProjects")]
+struct KeyResponse {
+    #[serde(rename = "getKey")]
     get_alive_projects: Vec<ProjectItem>,
 }
 
@@ -46,11 +67,17 @@ struct ProjectItem {
     query_endpoint: String,
 }
 
-pub async fn init_projects() {
-    let url = COMMAND.service_url();
+pub async fn validate_service_url() {
+    match account::fetch_account_metadata().await {
+        Ok(_) => info!("Connect with coordinator service successfully"),
+        Err(e) => panic!("Invalid coordinator service url with error: {}", e),
+    }
+}
+
+pub async fn init_projects(url: &str) {
     // graphql query for getting alive projects
     let query = json!({ "query": "query { getAliveProjects { id queryEndpoint } }" });
-    let result = graphql_request(&url, &query).await;
+    let result = graphql_request(url, &query).await;
 
     match result {
         Ok(value) => match value.pointer("/data") {

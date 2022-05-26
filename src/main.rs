@@ -7,6 +7,7 @@ mod cli;
 mod constants;
 mod eip712;
 mod error;
+mod payg;
 mod project;
 mod prometheus;
 mod query;
@@ -24,7 +25,6 @@ use tracing::Level;
 
 #[tokio::main]
 async fn main() {
-    let service_url = COMMAND.service_url();
     let port = COMMAND.port();
     let host = COMMAND.host();
     let debug = COMMAND.debug();
@@ -32,8 +32,8 @@ async fn main() {
     let log_filter = if debug { Level::DEBUG } else { Level::INFO };
     tracing_subscriber::fmt().with_max_level(log_filter).init();
 
-    project::validate_service_url().await;
-    project::init_projects(&service_url).await;
+    account::fetch_account_metadata().await.unwrap();
+    project::init_projects().await;
 
     project::subscribe();
 

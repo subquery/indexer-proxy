@@ -9,7 +9,6 @@ use libp2p::{
 use std::{collections::HashMap, error::Error, net::SocketAddr, path::PathBuf};
 use tokio::{fs, select};
 
-use crate::cli::COMMAND;
 use crate::p2p::behaviour::{
     behaviour,
     group::{GroupEvent, GroupId, GroupMessage},
@@ -17,11 +16,12 @@ use crate::p2p::behaviour::{
     Behaviour, Event as NetworkEvent,
 };
 use crate::p2p::handler::init_rpc_handler;
+use crate::p2p::payg;
 use crate::p2p::rpc::{
     helper::{rpc_error, rpc_response, RpcParam},
     rpc_channel, start as rpc_start, RpcConfig, RpcMessage,
 };
-use crate::p2p::utils::{http, state_channel};
+use crate::p2p::utils::http;
 
 pub async fn server(
     p2p_addr: Multiaddr,
@@ -91,7 +91,7 @@ pub async fn server(
                                     Request::Query(project, query, sign) => {
                                         let res_data = http::proxy_request(project, query).await;
                                         let res_sign = if sign.len() > 0 {
-                                            state_channel::handle_request(&sign).await
+                                            payg::handle(&sign).await
                                         } else {
                                             Response::Sign("".to_owned())
                                         };
@@ -99,7 +99,7 @@ pub async fn server(
                                         let _ = swarm.behaviour_mut().rpc.response(request_id, res);
                                     }
                                     Request::StateChannel(infos) => {
-                                        let res = state_channel::handle_request(&infos).await;
+                                        let res = payg::handle(&infos).await;
                                         let _ = swarm.behaviour_mut().rpc.response(request_id, res);
                                     }
                                 }
