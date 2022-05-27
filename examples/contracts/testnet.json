@@ -1,0 +1,80 @@
+{
+    "ProxyAdmin": {
+        "address": "0xBBE05223C48B0FCE89220bFc0f21a47051b7605B",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x67aadae0e3df6a7029fc8f9bbfc152805264522462100899f0602b817e3da964",
+        "lastUpdate": "Tue, 17 May 2022 01:17:55 GMT"
+    },
+    "Settings": {
+        "address": "0x3A7B7F7beeDb1C4AB4F3d428eBBA8DE4b3c715D0",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0xe31507f3ebb313b8ef0d74f48b487ca6ec3360b9199a788da4e2e2176d24b503",
+        "lastUpdate": "Tue, 17 May 2022 01:18:15 GMT"
+    },
+    "InflationController": {
+        "address": "0x391c129bb22EffeA3d5507D46791b18cbeC27647",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x5306afc5cd3bc57cfcc009b67dbc15978b9d446c5806a132bc97474f1cd93bc1",
+        "lastUpdate": "Tue, 17 May 2022 01:19:26 GMT"
+    },
+    "SQToken": {
+        "address": "0xD7FD8dEdfF13a9f32d30D390f70C3729c5176cC6",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x0450290ab0dba64c42b2192e0def6f20b31b30cd9594274692930b47c05761b8",
+        "lastUpdate": "Tue, 17 May 2022 01:19:50 GMT"
+    },
+    "Staking": {
+        "address": "0x22963b706F94ca70881859F0721E28DD9bD3C745",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0xc67e698025fec7dab62dab14054794da8ab049b684a2e02433fe0c78b7dd129a",
+        "lastUpdate": "Tue, 17 May 2022 01:21:02 GMT"
+    },
+    "EraManager": {
+        "address": "0xe5252fB84c156628979a9EF3d64b1d8B23Ea3F14",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x35cef03d42cbe91cf9b0059c475021aa7843783e517cd4062f8fa3f46062f3af",
+        "lastUpdate": "Tue, 17 May 2022 01:22:13 GMT"
+    },
+    "IndexerRegistry": {
+        "address": "0x359F5C80be48dB6de5510cD48103F91A407EebfE",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x91c0318d9880445922d7f6b50be979b064efbbd3c35fbba700cb4f2b27e809c8",
+        "lastUpdate": "Tue, 17 May 2022 01:23:26 GMT"
+    },
+    "QueryRegistry": {
+        "address": "0x464df2f26cf63eBDF64593C7Ab835B1ae1Af2CC5",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x9f46520a430dbbd7310f39a60b46355e72353df09eed617be167eb7e898e4ced",
+        "lastUpdate": "Tue, 17 May 2022 01:24:39 GMT"
+    },
+    "PlanManager": {
+        "address": "0xD822E4026992f282DF3469dcbc45B4474F4934Cf",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x4a2aff2c655a9e2f955b3e2415469a0c39970c700ec493a710c5054e40004863",
+        "lastUpdate": "Tue, 17 May 2022 01:25:49 GMT"
+    },
+    "PurchaseOfferMarket": {
+        "address": "0x05E805b1B68B1BfECb7B25DF1D1409e3e0f5A88a",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0x1606fd9a8cdc3f80be1c482a07b4e85f2032db0e3a90d788f14c748df8a1695f",
+        "lastUpdate": "Tue, 17 May 2022 01:26:58 GMT"
+    },
+    "ServiceAgreementRegistry": {
+        "address": "0x205F0516D7346732767bE3ee90Bf070CA4c0b8e8",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0xa339240ba431f58027bc09e352f22b10125e206847ce46a7c32859e8245ecb55",
+        "lastUpdate": "Tue, 17 May 2022 01:28:14 GMT"
+    },
+    "RewardsDistributer": {
+        "address": "0xdc42B2c11E16F0dbA3F1A27e446Ba5fADc2124C9",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0xbfebe6890be329e615375bc05865698844f3e4da18a382a52017b082d8f7cea5",
+        "lastUpdate": "Tue, 17 May 2022 01:29:28 GMT"
+    },
+    "StateChannel": {
+        "address": "0x4480B77F513C086FeD896589c7B6BA2083Ba7Ea6",
+        "bytecodeHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "txHash": "0xa89e2316f5945334ee7faee847804db7bfc60558afaf46bf172762cd31587537",
+        "lastUpdate": "Tue, 17 May 2022 01:30:43 GMT"
+    }
+}

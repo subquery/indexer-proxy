@@ -1,10 +1,11 @@
 use serde_json::{json, Value};
+use warp::http::header::AUTHORIZATION;
 
 use crate::p2p::behaviour::rpc::Response;
 use crate::project::PROJECTS;
 use crate::request::{graphql_request, REQUEST_CLIENT};
 
-pub async fn proxy_request(project: String, query: String) -> Response {
+pub async fn query_request(project: String, query: String) -> Response {
     match (PROJECTS::get(&project), serde_json::from_str(&query)) {
         (Ok(url), Ok(query)) => match graphql_request(&url, &query).await {
             Ok(value) => match value.pointer("/data") {
@@ -14,6 +15,52 @@ pub async fn proxy_request(project: String, query: String) -> Response {
             Err(err) => Response::Error(err.to_string()),
         },
         _ => Response::Error("Project is missing".to_owned()),
+    }
+}
+
+pub async fn proxy_request(
+    method: &str,
+    url: &str,
+    path: &str,
+    token: &str,
+    query: String,
+    headers: Vec<(String, String)>,
+) -> Result<Value, Value> {
+    let url = format!("{}/{}", url, path);
+    let token = format!("Bearer {}", token);
+
+    let res = match method.to_lowercase().as_str() {
+        "get" => {
+            let mut req = REQUEST_CLIENT.get(url).header(AUTHORIZATION, token);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            req.send().await
+        }
+        _ => {
+            let mut req = REQUEST_CLIENT
+                .post(url)
+                .header("content-type", "application/json")
+                .header(AUTHORIZATION, token);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            req.body(query).send().await
+        }
+    };
+
+    match res {
+        Ok(res) => match res.error_for_status() {
+            Ok(res) => match res.text().await {
+                Ok(data) => match serde_json::from_str(&data) {
+                    Ok(data) => Ok(data),
+                    Err(_err) => Ok(json!(data)),
+                },
+                Err(err) => Err(json!(err.to_string())),
+            },
+            Err(err) => Err(json!(err.to_string())),
+        },
+        Err(err) => Err(json!(err.to_string())),
     }
 }
 

@@ -21,7 +21,7 @@ use crate::account::ACCOUNT;
 use crate::error::Error;
 use crate::types::WebResult;
 
-const BEARER: &str = "Bearer ";
+const BEARER: &str = "State ";
 pub const PRICE: u64 = 10;
 
 pub async fn open_state(body: &Value) -> Result<Value, Error> {

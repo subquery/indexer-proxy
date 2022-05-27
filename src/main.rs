@@ -44,15 +44,19 @@ async fn main() {
         let p2p_ws = COMMAND.ws();
         info!("P2P bind: {}", p2p_bind);
 
+        let key_path = std::path::PathBuf::from("indexer.key"); // DEBUG TODO
+        let key = if key_path.exists() {
+            let key_bytes = tokio::fs::read(&key_path).await.unwrap_or(vec![]); // safe.
+            libp2p::identity::Keypair::from_protobuf_encoding(&key_bytes).unwrap()
+        } else {
+            let key = libp2p::identity::Keypair::generate_ed25519();
+            let _ = tokio::fs::write(key_path, key.to_protobuf_encoding().unwrap()).await;
+            key
+        };
         tokio::spawn(async move {
-            p2p::server::server(
-                p2p_bind,
-                p2p_rpc,
-                p2p_ws,
-                std::path::PathBuf::from("indexer.key"), // DEBUG TODO
-            )
-            .await
-            .unwrap();
+            p2p::server::server(p2p_bind, p2p_rpc, p2p_ws, key)
+                .await
+                .unwrap();
         });
     }
 

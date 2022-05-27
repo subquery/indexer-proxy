@@ -6,3 +6,4 @@ pub(crate) mod rpc;
 
 pub mod server;
 pub mod utils;
+pub use libp2p;

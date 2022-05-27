@@ -6,8 +6,8 @@ use libp2p::{
     swarm::{handler::ConnectionHandlerUpgrErr, Swarm, SwarmBuilder, SwarmEvent},
     Multiaddr, PeerId,
 };
-use std::{collections::HashMap, error::Error, net::SocketAddr, path::PathBuf};
-use tokio::{fs, select};
+use std::{collections::HashMap, error::Error, net::SocketAddr};
+use tokio::select;
 
 use crate::p2p::behaviour::{
     behaviour,
@@ -27,17 +27,8 @@ pub async fn server(
     p2p_addr: Multiaddr,
     rpc_addr: SocketAddr,
     ws_addr: Option<SocketAddr>,
-    key_path: PathBuf,
+    key: Keypair,
 ) -> Result<Swarm<Behaviour>, Box<dyn Error>> {
-    let key = if key_path.exists() {
-        let key_bytes = fs::read(&key_path).await.unwrap_or(vec![]); // safe.
-        Keypair::from_protobuf_encoding(&key_bytes)?
-    } else {
-        let key = Keypair::generate_ed25519();
-        let _ = fs::write(key_path, key.to_protobuf_encoding()?).await;
-        key
-    };
-
     let peer_id = PeerId::from(key.public());
     info!("Local peer id: {:?}", peer_id);
 
@@ -89,7 +80,7 @@ pub async fn server(
                                 debug!("Got request: {:?}", request);
                                 match request {
                                     Request::Query(project, query, sign) => {
-                                        let res_data = http::proxy_request(project, query).await;
+                                        let res_data = http::query_request(project, query).await;
                                         let res_sign = if sign.len() > 0 {
                                             payg::handle(&sign).await
                                         } else {
