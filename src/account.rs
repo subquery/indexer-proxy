@@ -54,12 +54,20 @@ pub async fn fetch_account_metadata() -> Result<()> {
         .as_str()
         .unwrap_or("")
         .trim();
-
-    // TODO decrypt sk
-    let sk = "689af8efa8c651a91ad287602527f3af2fe9f6501a7ac4b061667b5a93e037fd"; // MOCK
+    let sk_values =
+        serde_json::from_str::<serde_json::Value>(&sk).map_err(|_e| Error::InvalidController)?;
+    if sk_values.get("iv").is_none() || sk_values.get("content").is_none() {
+        return Err(Error::InvalidController);
+    }
+    let sk = COMMAND.decrypt(
+        sk_values["iv"].as_str().ok_or(Error::InvalidController)?,
+        sk_values["content"]
+            .as_str()
+            .ok_or(Error::InvalidController)?,
+    )?; // with 0x...
 
     let controller_sk =
-        SecretKey::from_slice(&hex::decode(sk).map_err(|_e| Error::InvalidController)?)
+        SecretKey::from_slice(&hex::decode(&sk[2..]).map_err(|_e| Error::InvalidController)?)
             .map_err(|_e| Error::InvalidController)?;
 
     let controller = SecretKeyRef::new(&controller_sk).address();

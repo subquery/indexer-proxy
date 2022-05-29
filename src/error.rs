@@ -30,6 +30,8 @@ pub enum Error {
     InvalidSerialize,
     #[error("invalid signature")]
     InvalidSignature,
+    #[error("invalid encrypt or decrypt")]
+    InvalidEncrypt,
 }
 
 #[derive(Serialize, Debug)]

@@ -1,6 +1,9 @@
 use lazy_static::lazy_static;
+use openssl::symm::{decrypt, Cipher};
 use std::net::SocketAddr;
 use structopt::StructOpt;
+
+use crate::error::Error;
 
 #[cfg(feature = "p2p")]
 use libp2p::Multiaddr;
@@ -66,9 +69,20 @@ impl CommandLineArgs {
         self.service_url.clone()
     }
 
-    // pub fn secret_key(&self) -> String {
-    //     self.secret_key
-    // }
+    pub fn decrypt(&self, iv: &str, ciphertext: &str) -> Result<String, Error> {
+        let iv = hex::decode(iv).map_err(|_| Error::InvalidEncrypt)?;
+        let ctext = hex::decode(ciphertext).map_err(|_| Error::InvalidEncrypt)?;
+
+        let ptext = decrypt(
+            Cipher::aes_256_ctr(),
+            self.secret_key.as_bytes(),
+            Some(&iv),
+            &ctext,
+        )
+        .map_err(|_| Error::InvalidEncrypt)?;
+
+        String::from_utf8(ptext.clone()).map_err(|_| Error::InvalidEncrypt)
+    }
 
     pub fn host(&self) -> String {
         self.host.clone()
