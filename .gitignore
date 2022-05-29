@@ -3,3 +3,4 @@
 Cargo.lock
 *.key
 /examples/contracts/local.json
+history.txt

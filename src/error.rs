@@ -24,6 +24,8 @@ pub enum Error {
     InvalidProejctId,
     #[error("invalid coordinator service endpoint")]
     InvalidServiceEndpoint,
+    #[error("invalid or missing controller")]
+    InvalidController,
     #[error("invalid serialize")]
     InvalidSerialize,
     #[error("invalid signature")]

@@ -48,17 +48,19 @@ pub async fn fetch_account_metadata() -> Result<()> {
         .parse()
         .map_err(|_e| Error::InvalidServiceEndpoint)?;
 
-    // let sk = value
-    //     .pointer("/data/accountMetadata/controller")
-    //     .ok_or(Error::InvalidServiceEndpoint)?
-    //     .as_str()
-    //     .unwrap_or("")
-    //     .trim();
+    let sk = value
+        .pointer("/data/accountMetadata/controller")
+        .ok_or(Error::InvalidController)?
+        .as_str()
+        .unwrap_or("")
+        .trim();
+
+    // TODO decrypt sk
     let sk = "689af8efa8c651a91ad287602527f3af2fe9f6501a7ac4b061667b5a93e037fd"; // MOCK
 
     let controller_sk =
-        SecretKey::from_slice(&hex::decode(sk).map_err(|_e| Error::InvalidServiceEndpoint)?)
-            .map_err(|_e| Error::InvalidServiceEndpoint)?;
+        SecretKey::from_slice(&hex::decode(sk).map_err(|_e| Error::InvalidController)?)
+            .map_err(|_e| Error::InvalidController)?;
 
     let controller = SecretKeyRef::new(&controller_sk).address();
     info!("indexer: {:?}, controller: {:?}", indexer, controller);
