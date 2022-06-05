@@ -2,11 +2,11 @@ use serde_json::{json, Value};
 use warp::http::header::AUTHORIZATION;
 
 use crate::p2p::behaviour::rpc::Response;
-use crate::project::PROJECTS;
+use crate::project::get_project;
 use crate::request::{graphql_request, REQUEST_CLIENT};
 
 pub async fn query_request(project: String, query: String) -> Response {
-    match (PROJECTS::get(&project), serde_json::from_str(&query)) {
+    match (get_project(&project), serde_json::from_str(&query)) {
         (Ok(url), Ok(query)) => match graphql_request(&url, &query).await {
             Ok(value) => match value.pointer("/data") {
                 Some(data) => Response::RawData(serde_json::to_string(data).unwrap()),

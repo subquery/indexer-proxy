@@ -13,12 +13,13 @@ pub async fn handle(infos: &str) -> Response {
     }
     match params["method"].as_str().unwrap() {
         "info" => {
-            let account = ACCOUNT.lock().unwrap();
+            let account = ACCOUNT.read().await;
             let data = json!({
                 "indexer": format!("{:?}", account.indexer),
                 "controller": format!("{:?}", account.controller),
                 "price": U256::from(PRICE),
             });
+            drop(account);
             Response::Sign(serde_json::to_string(&data).unwrap())
         }
         "open" => match open_state(&params).await {
@@ -28,7 +29,7 @@ pub async fn handle(infos: &str) -> Response {
         "query" => match QueryState::from_json(&params["state"]) {
             Ok(mut state) => {
                 state.next_price = U256::from(PRICE);
-                let account = ACCOUNT.lock().unwrap();
+                let account = ACCOUNT.read().await;
                 let key = SecretKeyRef::new(&account.controller_sk);
                 match state.sign(key, false) {
                     Err(err) => return Response::Error(err.to_string()),
@@ -38,6 +39,7 @@ pub async fn handle(infos: &str) -> Response {
                     Ok((_, consumer)) => consumer,
                     Err(err) => return Response::Error(err.to_string()),
                 };
+                drop(account);
 
                 // TODO query state to coordiantor
 

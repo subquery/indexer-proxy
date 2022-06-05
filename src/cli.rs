@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use openssl::symm::{decrypt, Cipher};
 use std::net::SocketAddr;
 use structopt::StructOpt;
@@ -13,9 +13,7 @@ const SEED_ADDR: &'static str = "/ip4/0.0.0.0/tcp/7000";
 #[cfg(feature = "p2p")]
 const P2P_ADDR: &'static str = "/ip4/0.0.0.0/tcp/0";
 
-lazy_static! {
-    pub static ref COMMAND: CommandLineArgs = CommandLineArgs::new();
-}
+pub static COMMAND: Lazy<CommandLineArgs> = Lazy::new(|| CommandLineArgs::from_args());
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -57,16 +55,12 @@ pub struct CommandLineArgs {
 }
 
 impl CommandLineArgs {
-    pub fn new() -> Self {
-        CommandLineArgs::from_args()
-    }
-
     pub fn port(&self) -> u16 {
         self.port
     }
 
-    pub fn service_url(&self) -> String {
-        self.service_url.clone()
+    pub fn service_url(&self) -> &str {
+        &self.service_url
     }
 
     pub fn decrypt(&self, iv: &str, ciphertext: &str) -> Result<String, Error> {
@@ -84,8 +78,8 @@ impl CommandLineArgs {
         String::from_utf8(ptext.clone()).map_err(|_| Error::InvalidEncrypt)
     }
 
-    pub fn host(&self) -> String {
-        self.host.clone()
+    pub fn host(&self) -> &str {
+        &self.host
     }
 
     pub fn debug(&self) -> bool {

@@ -390,7 +390,7 @@ async fn main() {
                                 vec![Value::from(current_indexer.as_str()), Value::from(infos)];
                             jsonrpc_request(0, url, "state-channel", query).await
                         } else {
-                            proxy_request("post", PROXY_URL, "", PROXY_TOKEN, raw_state, vec![])
+                            proxy_request("post", PROXY_URL, "open", PROXY_TOKEN, raw_state, vec![])
                                 .await
                         };
 
@@ -402,76 +402,6 @@ async fn main() {
                                 println!("expiration: {}", state.expiration);
                                 println!("indexer:    {:?}", state.indexer);
                                 println!("consumer:   {:?}", state.consumer);
-
-                                let fn_data = contracts["SQToken"]
-                                    .abi()
-                                    .function("increaseAllowance")
-                                    .and_then(|function| {
-                                        function.encode_input(
-                                            &(
-                                                contracts["StateChannel"].address(),
-                                                U256::from(amount),
-                                            )
-                                                .into_tokens(),
-                                        )
-                                    })
-                                    .unwrap();
-                                let tx = TransactionParameters {
-                                    to: Some(contracts["SQToken"].address()),
-                                    data: Bytes(fn_data),
-                                    ..Default::default()
-                                };
-                                let signed = web3
-                                    .accounts()
-                                    .sign_transaction(tx, &consumer_sk)
-                                    .await
-                                    .unwrap();
-                                let _tx_hash = web3
-                                    .eth()
-                                    .send_raw_transaction(signed.raw_transaction)
-                                    .await
-                                    .unwrap();
-
-                                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                                println!("Approved Token");
-
-                                let call_params = (
-                                    state.channel_id,
-                                    state.indexer,
-                                    state.consumer,
-                                    state.amount,
-                                    state.expiration,
-                                    convert_sign_to_bytes(&state.indexer_sign),
-                                    convert_sign_to_bytes(&state.consumer_sign),
-                                );
-                                let call_tokens = call_params.clone().into_tokens();
-                                let fn_data = contracts["StateChannel"]
-                                    .abi()
-                                    .function("open")
-                                    .and_then(|function| function.encode_input(&call_tokens))
-                                    .unwrap();
-                                let gas = contracts["StateChannel"]
-                                    .estimate_gas("open", call_params, consumer, Default::default())
-                                    .await
-                                    .unwrap();
-
-                                let tx = TransactionParameters {
-                                    to: Some(contracts["StateChannel"].address()),
-                                    data: Bytes(fn_data),
-                                    gas: gas,
-                                    ..Default::default()
-                                };
-                                //web3.eth().balance(&controller.address())
-                                let signed = web3
-                                    .accounts()
-                                    .sign_transaction(tx, &consumer_sk)
-                                    .await
-                                    .unwrap();
-                                let tx_hash = web3
-                                    .eth()
-                                    .send_raw_transaction(signed.raw_transaction)
-                                    .await
-                                    .unwrap();
 
                                 cid = channels.len();
                                 channels.push(StateChannel {
@@ -488,7 +418,6 @@ async fn main() {
                                     info_indexer: current_indexer.clone(),
                                     info_project: current_project.clone(),
                                 });
-                                println!("\x1b[94m>>> TxHash: {:?}\x1b[00m", tx_hash);
                             }
                             Err(err) => println!("\x1b[91m>>> Error: {}\x1b[00m", err),
                         }

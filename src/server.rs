@@ -10,7 +10,7 @@ use crate::auth::{self, with_auth};
 use crate::constants::HEADERS;
 use crate::error::{handle_rejection, Error};
 use crate::payg::{open_state, with_state, QueryState};
-use crate::project::PROJECTS;
+use crate::project::get_project;
 use crate::query::METADATA_QUERY;
 use crate::request::graphql_request;
 use crate::types::WebResult;
@@ -28,7 +28,7 @@ pub struct QueryToken {
     pub token: String,
 }
 
-pub async fn start_server(host: String, port: u16) {
+pub async fn start_server(host: &str, port: u16) {
     // create token for query.
     let token_route = warp::path!("token")
         .and(warp::post())
@@ -78,7 +78,7 @@ pub async fn start_server(host: String, port: u16) {
 
 pub async fn generate_token(payload: auth::Payload) -> WebResult<impl Reply> {
     // TODO: request to coordiantor service to verify the account has valid service agreement with indexer
-    let _ = match PROJECTS::get(&payload.deployment_id) {
+    let _ = match get_project(&payload.deployment_id) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
@@ -96,7 +96,7 @@ pub async fn query_handler(
         return Err(reject::custom(Error::JWTTokenError));
     };
 
-    let query_url = match PROJECTS::get(&id) {
+    let query_url = match get_project(&id) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
@@ -120,7 +120,7 @@ pub async fn payg_handler(
     state: (QueryState, Address),
     query: Value,
 ) -> WebResult<impl Reply> {
-    let query_url = match PROJECTS::get(&id) {
+    let query_url = match get_project(&id) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };
@@ -141,7 +141,7 @@ pub async fn payg_handler(
 }
 
 pub async fn metadata_handler(id: String) -> WebResult<impl Reply> {
-    let query_url = match PROJECTS::get(&id) {
+    let query_url = match get_project(&id) {
         Ok(url) => url,
         Err(e) => return Err(reject::custom(e)),
     };

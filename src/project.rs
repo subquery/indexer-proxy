@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -7,30 +7,26 @@ use std::sync::Mutex;
 use std::thread;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::{connect, Message};
-use tracing::{debug, info};
 
 use crate::cli::COMMAND;
 use crate::error::Error;
 use crate::request::graphql_request;
 
-lazy_static! {
-    pub static ref PROJECTS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+pub static PROJECTS: Lazy<Mutex<HashMap<String, String>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+pub fn add_project(deployment_id: String, url: String) {
+    let mut map = PROJECTS.lock().unwrap();
+    map.insert(deployment_id, url);
 }
 
-impl PROJECTS {
-    pub fn add(deployment_id: String, url: String) {
-        let mut map = PROJECTS.lock().unwrap();
-        map.insert(deployment_id, url);
-    }
-
-    pub fn get(key: &str) -> Result<String, Error> {
-        let map = PROJECTS.lock().unwrap();
-        let url = match map.get(key) {
-            Some(url) => url,
-            None => return Err(Error::InvalidProejctId),
-        };
-        Ok(url.to_owned())
-    }
+pub fn get_project(key: &str) -> Result<String, Error> {
+    let map = PROJECTS.lock().unwrap();
+    let url = match map.get(key) {
+        Some(url) => url,
+        None => return Err(Error::InvalidProejctId),
+    };
+    Ok(url.to_owned())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -58,7 +54,7 @@ pub async fn init_projects() {
                 let v_str: String = serde_json::to_string(v_d).unwrap_or(String::from(""));
                 let v: ProjectsResponse = serde_json::from_str(v_str.as_str()).unwrap();
                 for item in v.get_alive_projects {
-                    PROJECTS::add(item.id, item.query_endpoint);
+                    add_project(item.id, item.query_endpoint);
                 }
             }
             _ => {}
@@ -71,8 +67,7 @@ pub async fn init_projects() {
 
 pub fn subscribe() {
     thread::spawn(move || {
-        let url = COMMAND.service_url();
-        subscribe_project_change(url.as_str());
+        subscribe_project_change(COMMAND.service_url());
     });
 }
 
@@ -102,7 +97,7 @@ fn subscribe_project_change(url: &str) {
         let value: Value = serde_json::from_str(text).unwrap();
         let project = value.pointer("/payload/data/projectChanged").unwrap();
         let item: ProjectItem = serde_json::from_str(project.to_string().as_str()).unwrap();
-        PROJECTS::add(item.id, item.query_endpoint);
+        add_project(item.id, item.query_endpoint);
 
         debug!("indexing projects: {:?}", PROJECTS.lock().unwrap());
     }

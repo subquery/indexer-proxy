@@ -1,8 +1,7 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use secp256k1::{SecretKey, ONE_KEY};
 use serde_json::json;
-use std::sync::Mutex;
-use tracing::info;
+use tokio::sync::RwLock;
 use web3::{
     signing::{Key, SecretKeyRef},
     types::Address,
@@ -30,9 +29,7 @@ impl Default for Account {
     }
 }
 
-lazy_static! {
-    pub static ref ACCOUNT: Mutex<Account> = Mutex::new(Account::default());
-}
+pub static ACCOUNT: Lazy<RwLock<Account>> = Lazy::new(|| RwLock::new(Account::default()));
 
 pub async fn fetch_account_metadata() -> Result<()> {
     let url = COMMAND.service_url();
@@ -78,15 +75,14 @@ pub async fn fetch_account_metadata() -> Result<()> {
         controller,
         controller_sk,
     };
-    let mut account = ACCOUNT.lock().unwrap();
+    let mut account = ACCOUNT.write().await;
     *account = new_account;
 
     Ok(())
 }
 
-pub fn get_indexer() -> String {
-    let account = ACCOUNT.lock().unwrap();
-    format!("{:?}", account.indexer)
+pub async fn get_indexer() -> String {
+    format!("{:?}", ACCOUNT.read().await.indexer)
 }
 
 pub fn sign_message(_msg: &[u8]) -> String {

@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use reqwest::{
     header::{CONNECTION, CONTENT_TYPE},
     Client,
@@ -12,6 +12,8 @@ use crate::{
     error::GraphQLServerError,
 };
 
+pub static REQUEST_CLIENT: Lazy<Client> = Lazy::new(|| reqwest::Client::new());
+
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GraphQLQuery {
@@ -22,10 +24,6 @@ pub struct GraphQLQuery {
     /// The GraphQL operation name, as a string.
     #[serde(rename = "operationName")]
     pub operation_name: Option<String>,
-}
-
-lazy_static! {
-    pub static ref REQUEST_CLIENT: Client = reqwest::Client::new();
 }
 
 pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLServerError> {

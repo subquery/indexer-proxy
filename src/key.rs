@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use reqwest::header::HeaderValue;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -8,7 +8,6 @@ use std::thread;
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::{connect, Message};
-use tracing::{debug, info};
 
 use secp256k1::{SecretKey, ONE_KEY};
 use web3::{Address, SecretKeyRef};
@@ -36,9 +35,7 @@ impl Default for Key {
     }
 }
 
-lazy_static! {
-    pub static ref KEY: RwLock<Key> = RwLock::new(Key::default());
-}
+pub static KEY: Lazy<RwLock<Key>> = Lazy::new(|| RwLock::new(Key::default()));
 
 impl KEY {
     pub async fn update(indexer: Address, controller_sk: SecretKey) {

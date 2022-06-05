@@ -2,7 +2,6 @@ use serde::Serialize;
 use std::convert::Infallible;
 use std::fmt;
 use thiserror::Error;
-use tracing::error;
 use warp::{http::StatusCode, Rejection, Reply};
 
 use crate::cli::COMMAND;
@@ -32,6 +31,8 @@ pub enum Error {
     InvalidSignature,
     #[error("invalid encrypt or decrypt")]
     InvalidEncrypt,
+    #[error("service exception")]
+    ServiceException,
 }
 
 #[derive(Serialize, Debug)]

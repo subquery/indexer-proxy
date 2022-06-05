@@ -18,25 +18,56 @@ use web3::{
 };
 
 use crate::account::ACCOUNT;
+use crate::cli::COMMAND;
 use crate::error::Error;
+use crate::request::graphql_request;
 use crate::types::WebResult;
 
 const BEARER: &str = "State ";
-pub const PRICE: u64 = 10;
+pub const PRICE: u64 = 10; // TODO delete
 
 pub async fn open_state(body: &Value) -> Result<Value, Error> {
-    let mut state = match QueryState::from_json(body) {
-        Ok(s) => s,
-        Err(_) => return Err(Error::InvalidAuthHeaderError),
-    };
-    state.next_price = U256::from(PRICE);
+    let mut state = OpenState::from_json(body)?;
 
-    let account = ACCOUNT.lock().unwrap();
+    let account = ACCOUNT.read().await;
     let key = SecretKeyRef::new(&account.controller_sk);
     state.sign(key, false)?;
+    drop(account);
+
     let (_, _consumer) = state.recover()?;
 
-    // TODO send to coordiantor
+    let url = COMMAND.service_url();
+
+    let mdata = format!(
+        r#"mutation {{
+  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
+    lastPrice
+  }}
+}}
+"#,
+        state.channel_id,
+        state.indexer,
+        state.consumer,
+        state.amount,
+        state.expiration,
+        convert_sign_to_string(&state.indexer_sign),
+        convert_sign_to_string(&state.consumer_sign)
+    );
+
+    let query = json!({ "query": mdata });
+    let result = graphql_request(&url, &query)
+        .await
+        .map_err(|_| Error::ServiceException)?;
+    let price = result
+        .get("data")
+        .ok_or(Error::ServiceException)?
+        .get("channelOpen")
+        .ok_or(Error::ServiceException)?
+        .get("lastPrice")
+        .ok_or(Error::ServiceException)?
+        .as_i64()
+        .ok_or(Error::ServiceException)?;
+    state.next_price = U256::from(price);
 
     Ok(state.to_json())
 }
@@ -65,9 +96,10 @@ async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Ad
     };
     state.next_price = U256::from(PRICE);
 
-    let account = ACCOUNT.lock().unwrap();
+    let account = ACCOUNT.read().await;
     let key = SecretKeyRef::new(&account.controller_sk);
     state.sign(key, false)?;
+    drop(account);
     let (_, signer) = state.recover()?;
     Ok((state, signer))
 }
@@ -359,11 +391,21 @@ impl QueryState {
 
 /// Convert eth signature to string.
 pub fn convert_sign_to_string(sign: &Signature) -> String {
-    let mut s = String::new();
-    s.push_str(&hex::encode(sign.r.as_bytes()));
-    s.push_str(&hex::encode(sign.s.as_bytes()));
-    s.push_str(&hex::encode(sign.v.to_le_bytes()));
-    s
+    let bytes = convert_sign_to_bytes(sign);
+    hex::encode(&bytes)
+}
+
+/// Convert string to eth signature.
+pub fn convert_string_to_sign(s: &str) -> Signature {
+    let mut bytes = hex::decode(s).unwrap_or(vec![0u8; 65]); // 32 + 32 + 1
+
+    if bytes.len() < 65 {
+        bytes.extend(vec![0u8; 65 - bytes.len()]);
+    }
+    let r = H256::from_slice(&bytes[0..32]);
+    let s = H256::from_slice(&bytes[32..64]);
+    let v = bytes[64] as u64;
+    Signature { r, s, v }
 }
 
 /// Convert eth signature to bytes.
@@ -397,20 +439,6 @@ pub fn convert_recovery_sign(sign: &Signature) -> ([u8; 64], i32) {
         sig
     };
     (signature, recovery_id)
-}
-
-/// Convert string to eth signature.
-pub fn convert_string_to_sign(s: &str) -> Signature {
-    let mut bytes = hex::decode(s).unwrap_or(vec![0u8; 72]); // 36 + 36 + 8
-    if bytes.len() < 72 {
-        bytes.extend(vec![0u8; 72 - bytes.len()]);
-    }
-    let r = H256::from_slice(&bytes[0..32]);
-    let s = H256::from_slice(&bytes[32..64]);
-    let mut v_bytes = [0u8; 8];
-    v_bytes.copy_from_slice(&bytes[64..72]);
-    let v = u64::from_le_bytes(v_bytes);
-    Signature { r, s, v }
 }
 
 pub fn default_sign() -> Signature {
