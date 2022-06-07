@@ -86,6 +86,6 @@ pub async fn get_indexer() -> String {
 }
 
 pub fn sign_message(_msg: &[u8]) -> String {
-    //
-    todo!()
+    // TODO sign message to prove the result.
+    "".to_owned()
 }

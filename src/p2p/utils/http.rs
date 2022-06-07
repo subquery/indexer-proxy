@@ -31,21 +31,20 @@ pub async fn proxy_request(
 
     let res = match method.to_lowercase().as_str() {
         "get" => {
-            let mut req = REQUEST_CLIENT.get(url).header(AUTHORIZATION, token);
+            let mut req = REQUEST_CLIENT.get(url);
             for (k, v) in headers {
                 req = req.header(k, v);
             }
-            req.send().await
+            req.header(AUTHORIZATION, token).send().await
         }
         _ => {
             let mut req = REQUEST_CLIENT
                 .post(url)
-                .header("content-type", "application/json")
-                .header(AUTHORIZATION, token);
+                .header("content-type", "application/json");
             for (k, v) in headers {
                 req = req.header(k, v);
             }
-            req.body(query).send().await
+            req.header(AUTHORIZATION, token).body(query).send().await
         }
     };
 

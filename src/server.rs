@@ -132,9 +132,8 @@ pub async fn payg_handler(
             let _sign = account::sign_message(&string.as_bytes()); // TODO add to header
 
             // TODO add state to header and request to coordiantor know the response.
-            let (_state, _signer) = state;
-
-            Ok(reply::json(&result))
+            let (state, _signer) = state;
+            Ok(reply::json(&json!([result, state.to_json()])))
         }
         Err(e) => Err(reject::custom(e)),
     }

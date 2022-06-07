@@ -79,20 +79,14 @@ pub fn with_state() -> impl Filter<Extract = ((QueryState, Address),), Error = R
 }
 
 async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Address)> {
-    let header = match headers.get(AUTHORIZATION) {
-        Some(v) => v,
-        None => return Err(reject::custom(Error::NoPermissionError)),
-    };
-    let state_header = match std::str::from_utf8(header.as_bytes()) {
-        Ok(v) => v,
-        Err(_) => return Err(reject::custom(Error::NoPermissionError)),
-    };
-    if !state_header.starts_with(BEARER) {
-        return Err(reject::custom(Error::InvalidAuthHeaderError));
-    }
-    let mut state = match serde_json::from_str::<Value>(state_header.trim_start_matches(BEARER)) {
+    let header = headers
+        .get(AUTHORIZATION)
+        .and_then(|x| x.to_str().ok())
+        .ok_or(reject::custom(Error::NoPermissionError))?;
+
+    let mut state = match serde_json::from_str::<Value>(header) {
         Ok(v) => QueryState::from_json(&v)?,
-        Err(_) => return Err(reject::custom(Error::InvalidSerialize)),
+        Err(_) => return Err(reject::custom(Error::InvalidAuthHeaderError)),
     };
     state.next_price = U256::from(PRICE);
 
@@ -101,6 +95,31 @@ async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Ad
     state.sign(key, false)?;
     drop(account);
     let (_, signer) = state.recover()?;
+
+    let url = COMMAND.service_url();
+    let mdata = format!(
+        r#"mutation {{
+  channelUpdate(id:"{:#X}", count:{}, isFinal:{}, price:{}, indexerSign:"0x{}", consumerSign:"0x{}") {{ id }}
+}}
+"#,
+        state.channel_id,
+        state.count,
+        state.is_final,
+        state.price,
+        convert_sign_to_string(&state.indexer_sign),
+        convert_sign_to_string(&state.consumer_sign)
+    );
+
+    let query = json!({ "query": mdata });
+    let result = graphql_request(&url, &query)
+        .await
+        .map_err(|_| reject::custom(Error::ServiceException))?;
+
+    println!("------------------------- 4: {}", result);
+    let _ = result
+        .get("data")
+        .ok_or(reject::custom(Error::ServiceException))?;
+
     Ok((state, signer))
 }
 
