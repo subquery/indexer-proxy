@@ -51,6 +51,7 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             Error::InvalidProejctId => (StatusCode::BAD_REQUEST, e.to_string()),
             Error::NoPermissionError => (StatusCode::UNAUTHORIZED, e.to_string()),
             Error::JWTTokenError => (StatusCode::UNAUTHORIZED, e.to_string()),
+            Error::JWTTokenExpiredError => (StatusCode::UNAUTHORIZED, e.to_string()),
             Error::JWTTokenCreationError => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
             _ => (StatusCode::BAD_REQUEST, e.to_string()),
         }

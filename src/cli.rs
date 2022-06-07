@@ -37,6 +37,9 @@ pub struct CommandLineArgs {
     /// enable auth
     #[structopt(short = "a", long = "auth")]
     pub auth: bool,
+    /// auth token duration
+    #[structopt(long = "token-duration", default_value = "12")]
+    pub token_duration: i64,
     /// enable debug mode
     #[structopt(short = "d", long = "debug")]
     pub debug: bool,
@@ -100,6 +103,10 @@ impl CommandLineArgs {
 
     pub fn ws(&self) -> Option<SocketAddr> {
         self.p2p_ws
+    }
+
+    pub fn token_duration(&self) -> i64 {
+        self.token_duration
     }
 
     #[cfg(feature = "p2p")]

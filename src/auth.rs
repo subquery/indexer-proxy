@@ -48,7 +48,7 @@ type RequestHeader = HeaderMap<HeaderValue>;
 
 pub fn create_jwt(payload: Payload) -> Result<String> {
     let expiration = Utc::now()
-        .checked_add_signed(chrono::Duration::hours(12))
+        .checked_add_signed(chrono::Duration::hours(COMMAND.token_duration()))
         .expect("valid timestamp")
         .timestamp_millis();
 
