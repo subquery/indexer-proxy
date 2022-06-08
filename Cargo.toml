@@ -1,6 +1,6 @@
 [package]
 name = "subql-proxy"
-version = "0.1.7-2"
+version = "0.2.0"
 edition = "2018"
 default-run = "subql-proxy"
 
