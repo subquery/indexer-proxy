@@ -23,12 +23,11 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::thread;
+use subql_proxy_utils::{error::Error, request::graphql_request};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::{connect, Message};
 
 use crate::cli::COMMAND;
-use crate::error::Error;
-use crate::request::graphql_request;
 
 pub static PROJECTS: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 

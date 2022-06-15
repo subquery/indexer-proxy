@@ -16,14 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub const APPLICATION_JSON: &str = "application/json";
+use web3::signing::{keccak256, recover};
 
-pub const KEEP_ALIVE: &str = "Keep-Alive";
+pub fn eth_message(message: String) -> [u8; 32] {
+    keccak256(format!("{}{}{}", "\x19Ethereum Signed Message:\n", message.len(), message).as_bytes())
+}
 
-pub const HEADERS: [&'static str; 5] = [
-    "content-type",
-    "x-apollo-tracing",
-    "agent",
-    "authorization",
-    "user-agent",
-];
+pub fn recover_signer(message: String, signature: &str) -> String {
+    let msg = eth_message(message);
+    let sig = hex::decode(signature).unwrap();
+    let recover_id = sig[64] as i32 - 27;
+    let pubkey = recover(&msg, &sig[..64], recover_id).unwrap();
+    format!("{:02X?}", pubkey)
+}

@@ -22,24 +22,19 @@ extern crate tracing;
 mod account;
 mod auth;
 mod cli;
-mod constants;
-mod eip712;
-mod error;
 mod payg;
 mod project;
 mod prometheus;
-mod query;
-mod request;
 mod server;
-mod tools;
-mod traits;
-mod types;
 
 #[cfg(feature = "p2p")]
 mod p2p;
 
 use cli::COMMAND;
 use tracing::Level;
+
+#[cfg(feature = "p2p")]
+use subql_proxy_utils::p2p::{libp2p::identity::Keypair, server::server as p2p_server};
 
 #[tokio::main]
 async fn main() {
@@ -65,14 +60,14 @@ async fn main() {
         let key_path = std::path::PathBuf::from("indexer.key"); // DEBUG TODO
         let key = if key_path.exists() {
             let key_bytes = tokio::fs::read(&key_path).await.unwrap_or(vec![]); // safe.
-            libp2p::identity::Keypair::from_protobuf_encoding(&key_bytes).unwrap()
+            Keypair::from_protobuf_encoding(&key_bytes).unwrap()
         } else {
-            let key = libp2p::identity::Keypair::generate_ed25519();
+            let key = Keypair::generate_ed25519();
             let _ = tokio::fs::write(key_path, key.to_protobuf_encoding().unwrap()).await;
             key
         };
         tokio::spawn(async move {
-            p2p::server::server(p2p_bind, p2p_rpc, p2p_ws, key).await.unwrap();
+            p2p_server::<p2p::IndexerP2p>(p2p_bind, p2p_rpc, p2p_ws, None, key).await.unwrap();
         });
     }
 

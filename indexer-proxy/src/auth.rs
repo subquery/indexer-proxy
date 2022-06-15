@@ -19,14 +19,18 @@
 use chrono::prelude::*;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use subql_proxy_utils::{
+    eip712::recover_signer,
+    error::Error,
+    types::{Result, WebResult},
+};
 use warp::{
     filters::header::headers_cloned,
     http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
     reject, Filter, Rejection,
 };
 
-use crate::types::WebResult;
-use crate::{cli::COMMAND, eip712::recover_signer, error::Error, types::Result};
+use crate::cli::COMMAND;
 
 const BEARER: &str = "Bearer ";
 // FIXME: use `secret_key` from commandline args
@@ -134,7 +138,7 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String> {
 
 fn verify_message(payload: &Payload) -> Result<bool> {
     let message = format!("{}{}{}", payload.indexer, payload.deployment_id, payload.timestamp);
-    let signer = recover_signer(message, &payload.signature).unwrap();
+    let signer = recover_signer(message, &payload.signature);
 
     debug!("compare pubkey: {}", signer);
 

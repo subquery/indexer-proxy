@@ -18,12 +18,12 @@
 
 use std::sync::Arc;
 
-use crate::p2p::behaviour::{
+use super::behaviour::{
     group::GroupId,
     rpc::{Request, RequestId, Response},
 };
-use crate::p2p::rpc::helper::{json, RpcError, RpcHandler, RpcParam};
-use crate::p2p::server::Event;
+use super::rpc::helper::{json, RpcError, RpcHandler, RpcParam};
+use super::server::Event;
 
 pub struct State;
 

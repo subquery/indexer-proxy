@@ -25,26 +25,29 @@ use libp2p::{
     Multiaddr, PeerId,
 };
 use std::{collections::HashMap, error::Error, net::SocketAddr};
-use tokio::select;
+use tokio::{
+    select,
+    sync::mpsc::{Receiver, Sender},
+};
 
-use crate::p2p::behaviour::{
+use super::behaviour::{
     behaviour,
     group::{GroupEvent, GroupId, GroupMessage},
     rpc::{Request, RequestId, Response, RpcEvent, RpcMessage as NetworkRpcMessage},
     Behaviour, Event as NetworkEvent,
 };
-use crate::p2p::handler::init_rpc_handler;
-use crate::p2p::payg;
-use crate::p2p::rpc::{
+use super::handler::init_rpc_handler;
+use super::rpc::{
     helper::{rpc_error, rpc_response, RpcParam},
     rpc_channel, start as rpc_start, RpcConfig, RpcMessage,
 };
-use crate::p2p::utils::http;
+use super::P2pHandler;
 
-pub async fn server(
+pub async fn server<T: P2pHandler>(
     p2p_addr: Multiaddr,
     rpc_addr: SocketAddr,
     ws_addr: Option<SocketAddr>,
+    _channel: Option<(Sender<ChannelMessage>, Receiver<ChannelMessage>)>,
     key: Keypair,
 ) -> Result<Swarm<Behaviour>, Box<dyn Error>> {
     let peer_id = PeerId::from(key.public());
@@ -59,8 +62,8 @@ pub async fn server(
 
     swarm.listen_on(p2p_addr)?;
 
-    // DEBUG auto join bitcoin
-    swarm.behaviour_mut().group.join(GroupId::new("bitcoin"));
+    // DEBUG auto join subquery
+    swarm.behaviour_mut().group.join(GroupId::new("subquery"));
 
     let (out_send, mut out_recv) = rpc_channel();
     let rpc_config = RpcConfig {
@@ -91,33 +94,26 @@ pub async fn server(
                 SwarmEvent::Behaviour(event) => match event {
                     NetworkEvent::Rpc(msg) => match msg {
                         RpcEvent::Message { peer: _, message } => match message {
-                            NetworkRpcMessage::Request { request_id, request } => {
+                            NetworkRpcMessage::Request {
+                                request_id,
+                                request,
+                            } => {
                                 debug!("Got request: {:?}", request);
-                                match request {
-                                    Request::Query(project, query, sign) => {
-                                        let res_data = http::query_request(project, query).await;
-                                        let res_sign = if sign.len() > 0 {
-                                            payg::handle(&sign).await
-                                        } else {
-                                            Response::Sign("".to_owned())
-                                        };
-                                        let res = res_data.with_sign(res_sign);
-                                        let _ = swarm.behaviour_mut().rpc.response(request_id, res);
-                                    }
-                                    Request::StateChannel(infos) => {
-                                        let res = payg::handle(&infos).await;
-                                        let _ = swarm.behaviour_mut().rpc.response(request_id, res);
-                                    }
-                                }
-
-                                //let req = rpc_response(0, "request", RpcParam::from(s));
-                                //let _ = rpc_send.send(RpcMessage(0, req, true)).await;
+                                let res = T::request(request).await;
+                                let _ = swarm.behaviour_mut().rpc.response(request_id, res);
                             }
-                            NetworkRpcMessage::Response { request_id, response } => {
+                            NetworkRpcMessage::Response {
+                                request_id,
+                                response,
+                            } => {
                                 debug!("Got response: {:?}", response);
                                 let res = match response {
-                                    Response::RawData(data) => rpc_response(0, "query", RpcParam::from(data)),
-                                    Response::Sign(sign) => rpc_response(0, "sign", RpcParam::from(sign)),
+                                    Response::RawData(data) => {
+                                        rpc_response(0, "query", RpcParam::from(data))
+                                    }
+                                    Response::Sign(sign) => {
+                                        rpc_response(0, "sign", RpcParam::from(sign))
+                                    }
                                     Response::Data(data, sign) => {
                                         rpc_response(0, "query", RpcParam::from(vec![data, sign]))
                                     }
@@ -149,7 +145,10 @@ pub async fn server(
                         } => {
                             // handle receive request/response error.
                         }
-                        RpcEvent::ResponseSent { peer: _, request_id: _ } => {
+                        RpcEvent::ResponseSent {
+                            peer: _,
+                            request_id: _,
+                        } => {
                             // handle send response success.
                         }
                     },
@@ -213,7 +212,10 @@ pub async fn server(
                                     let _ = swarm.behaviour_mut().group.add_node_to_group(gid, pid);
                                 }
                                 Event::GroupDelNode(gid, pid) => {
-                                    let _ = swarm.behaviour_mut().group.remove_node_from_group(gid, pid);
+                                    let _ = swarm
+                                        .behaviour_mut()
+                                        .group
+                                        .remove_node_from_group(gid, pid);
                                 }
                             }
                         } else {
@@ -251,3 +253,5 @@ pub enum Event {
     GroupAddNode(GroupId, PeerId),
     GroupDelNode(GroupId, PeerId),
 }
+
+pub struct ChannelMessage(u64, Event);

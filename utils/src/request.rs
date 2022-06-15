@@ -16,26 +16,59 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use once_cell::sync::Lazy;
+use reqwest::{
+    header::{CONNECTION, CONTENT_TYPE},
+    Client,
+};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use warp::http::header::AUTHORIZATION;
+use serde_with::skip_serializing_none;
 
-use crate::p2p::behaviour::rpc::Response;
-use crate::project::get_project;
-use crate::request::{graphql_request, REQUEST_CLIENT};
+use crate::{
+    constants::{APPLICATION_JSON, KEEP_ALIVE, AUTHORIZATION},
+    error::GraphQLServerError,
+};
 
-pub async fn query_request(project: String, query: String) -> Response {
-    match (get_project(&project), serde_json::from_str(&query)) {
-        (Ok(url), Ok(query)) => match graphql_request(&url, &query).await {
-            Ok(value) => match value.pointer("/data") {
-                Some(data) => Response::RawData(serde_json::to_string(data).unwrap()),
-                _ => Response::Error("Data is missing".to_owned()),
-            },
-            Err(err) => Response::Error(err.to_string()),
-        },
-        _ => Response::Error("Project is missing".to_owned()),
-    }
+pub static REQUEST_CLIENT: Lazy<Client> = Lazy::new(|| reqwest::Client::new());
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GraphQLQuery {
+    /// The GraphQL query, as a string.
+    pub query: String,
+    ///  The GraphQL query variables
+    pub variables: Option<Value>,
+    /// The GraphQL operation name, as a string.
+    #[serde(rename = "operationName")]
+    pub operation_name: Option<String>,
 }
 
+// Request to graphql service.
+pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLServerError> {
+    let response_result = REQUEST_CLIENT
+        .post(uri)
+        .header(CONTENT_TYPE, APPLICATION_JSON)
+        .header(CONNECTION, KEEP_ALIVE)
+        .body(query.to_string())
+        .send()
+        .await;
+
+    let res = match response_result {
+        Ok(res) => res,
+        Err(e) => return Err(GraphQLServerError::QueryError(format!("{}", e))),
+    };
+
+    let json_result = res.json().await;
+    let json_data: Value = match json_result {
+        Ok(res) => res,
+        Err(e) => return Err(GraphQLServerError::InternalError(format!("Parse result error:{}", e))),
+    };
+
+    Ok(json_data)
+}
+
+// Request to indexer proxy
 pub async fn proxy_request(
     method: &str,
     url: &str,
@@ -79,6 +112,7 @@ pub async fn proxy_request(
     }
 }
 
+// Request to jsonrpc service.(P2P RPC)
 pub async fn jsonrpc_request(id: u64, url: &str, method: &str, params: Vec<Value>) -> Result<Value, Value> {
     let res = REQUEST_CLIENT
         .post(url)

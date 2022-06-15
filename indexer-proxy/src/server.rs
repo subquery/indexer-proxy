@@ -21,17 +21,20 @@ use std::net::Ipv4Addr;
 
 use serde::Serialize;
 use serde_json::{json, Value};
+use subql_proxy_utils::{
+    constants::HEADERS,
+    error::{handle_rejection, Error},
+    payg::QueryState,
+    query::METADATA_QUERY,
+    request::graphql_request,
+    types::WebResult,
+};
 use warp::{reject, reply, Filter, Reply};
 use web3::types::Address;
 
 use crate::auth::{self, with_auth};
-use crate::constants::HEADERS;
-use crate::error::{handle_rejection, Error};
-use crate::payg::{open_state, with_state, QueryState};
+use crate::payg::{open_state, with_state};
 use crate::project::get_project;
-use crate::query::METADATA_QUERY;
-use crate::request::graphql_request;
-use crate::types::WebResult;
 use crate::{account, cli::COMMAND, prometheus};
 
 #[derive(Serialize)]
@@ -84,7 +87,7 @@ pub async fn start_server(host: &str, port: u16) {
         .or(open_route)
         .or(payg_route)
         .or(metadata_route)
-        .recover(handle_rejection);
+        .recover(|err| handle_rejection(err, COMMAND.dev()));
     let cors = warp::cors()
         .allow_any_origin()
         .allow_headers(HEADERS)

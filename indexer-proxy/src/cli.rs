@@ -20,11 +20,10 @@ use once_cell::sync::Lazy;
 use openssl::symm::{decrypt, Cipher};
 use std::net::SocketAddr;
 use structopt::StructOpt;
-
-use crate::error::Error;
+use subql_proxy_utils::error::Error;
 
 #[cfg(feature = "p2p")]
-use libp2p::Multiaddr;
+use subql_proxy_utils::p2p::libp2p::Multiaddr;
 
 #[cfg(feature = "p2p")]
 const SEED_ADDR: &'static str = "/ip4/0.0.0.0/tcp/7000";

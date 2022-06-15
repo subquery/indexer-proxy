@@ -152,7 +152,11 @@ async fn send_state(
         ..Default::default()
     };
     let signed = web3.accounts().sign_transaction(tx, secret).await.unwrap();
-    let tx_hash = web3.eth().send_raw_transaction(signed.raw_transaction).await.unwrap();
+    let tx_hash = web3
+        .eth()
+        .send_raw_transaction(signed.raw_transaction)
+        .await
+        .unwrap();
     println!("\x1b[94m>>> TxHash: {:?}\x1b[00m", tx_hash);
 }
 
@@ -202,7 +206,10 @@ async fn main() {
     let http = Http::new(&web3_endpoint).unwrap();
     let mut web3 = Web3::new(http);
     if !PathBuf::from(format!("./examples/contracts/{}.json", net)).exists() {
-        println!("Missing contracts deployment. See contracts repo public/{}.json", net);
+        println!(
+            "Missing contracts deployment. See contracts repo public/{}.json",
+            net
+        );
         return;
     }
     let file = std::fs::File::open(format!("./examples/contracts/{}.json", net)).unwrap();
@@ -272,7 +279,10 @@ async fn main() {
                 "show" => {
                     println!("Account Consumer:       {:?}", consumer);
                     //println!("Account Controller:     {:?}", controller.address());
-                    println!("State Channel Contract: {}", contracts["StateChannel"].address());
+                    println!(
+                        "State Channel Contract: {}",
+                        contracts["StateChannel"].address()
+                    );
                     println!("Web3 Endpoint:          {}", web3_endpoint);
                     println!("");
                     if channels.len() == 0 {
@@ -346,11 +356,17 @@ async fn main() {
                     }
                     "indexer" => {
                         current_indexer = params;
-                        println!("\x1b[93m>>> Indexer changed to: {}\x1b[00m", current_indexer);
+                        println!(
+                            "\x1b[93m>>> Indexer changed to: {}\x1b[00m",
+                            current_indexer
+                        );
                     }
                     "project" => {
                         current_project = params;
-                        println!("\x1b[93m>>> Project changed to: {}\x1b[00m", current_project);
+                        println!(
+                            "\x1b[93m>>> Project changed to: {}\x1b[00m",
+                            current_project
+                        );
                     }
                     _ => println!("\x1b[91mInvalid, type again!\x1b[00m"),
                 }
@@ -376,10 +392,12 @@ async fn main() {
                         let expiration = U256::from_dec_str(next_params.next().unwrap()).unwrap();
 
                         let state = OpenState::consumer_generate(
+                            None,
                             indexer,
                             consumer,
                             amount,
                             expiration,
+                            vec![],
                             SecretKeyRef::new(&consumer_sk),
                         )
                         .unwrap();
@@ -388,10 +406,12 @@ async fn main() {
                         let res = if is_p2p {
                             let data = json!({ "method": "open", "state": raw_state });
                             let infos = serde_json::to_string(&data).unwrap();
-                            let query = vec![Value::from(current_indexer.as_str()), Value::from(infos)];
+                            let query =
+                                vec![Value::from(current_indexer.as_str()), Value::from(infos)];
                             jsonrpc_request(0, url, "state-channel", query).await
                         } else {
-                            proxy_request("post", PROXY_URL, "open", PROXY_TOKEN, raw_state, vec![]).await
+                            proxy_request("post", PROXY_URL, "open", PROXY_TOKEN, raw_state, vec![])
+                                .await
                         };
 
                         match res {
@@ -457,10 +477,17 @@ async fn main() {
                         let fn_data = contracts["StateChannel"]
                             .abi()
                             .function("claim")
-                            .and_then(|function| function.encode_input(&(channel_id,).into_tokens()))
+                            .and_then(|function| {
+                                function.encode_input(&(channel_id,).into_tokens())
+                            })
                             .unwrap();
                         let gas = contracts["StateChannel"]
-                            .estimate_gas("claim", (channel_id,), channels[cid].consumer, Default::default())
+                            .estimate_gas(
+                                "claim",
+                                (channel_id,),
+                                channels[cid].consumer,
+                                Default::default(),
+                            )
                             .await;
                         if gas.is_err() {
                             println!("Channel not expired");
@@ -473,13 +500,27 @@ async fn main() {
                             gas: gas,
                             ..Default::default()
                         };
-                        let signed = web3.accounts().sign_transaction(tx, &consumer_sk).await.unwrap();
-                        let tx_hash = web3.eth().send_raw_transaction(signed.raw_transaction).await.unwrap();
+                        let signed = web3
+                            .accounts()
+                            .sign_transaction(tx, &consumer_sk)
+                            .await
+                            .unwrap();
+                        let tx_hash = web3
+                            .eth()
+                            .send_raw_transaction(signed.raw_transaction)
+                            .await
+                            .unwrap();
                         println!("\x1b[94m>>> TxHash: {:?}\x1b[00m", tx_hash);
                     }
                     "show" => {
                         let result: (Token,) = contracts["StateChannel"]
-                            .query("channel", (channels[cid].id,), None, Options::default(), None)
+                            .query(
+                                "channel",
+                                (channels[cid].id,),
+                                None,
+                                Options::default(),
+                                None,
+                            )
                             .await
                             .unwrap();
                         match result.0 {
@@ -490,7 +531,10 @@ async fn main() {
                                 println!("State Channel Status: {}", data[0]);
                                 println!(" Indexer:  0x{}", data[1]);
                                 println!(" Consumer: 0x{}", data[2]);
-                                println!(" Count On-chain: {:?}, Now: {}", count, channels[cid].count);
+                                println!(
+                                    " Count On-chain: {:?}, Now: {}",
+                                    count, channels[cid].count
+                                );
                                 println!(" Amount:         {:?}", amount);
                                 println!(" Expiration:     {:?}", expiration);
                             }
@@ -567,7 +611,8 @@ async fn main() {
                     continue;
                 }
 
-                let is_final = channels[cid].count * channels[cid].last_price >= channels[cid].amount;
+                let is_final =
+                    channels[cid].count * channels[cid].last_price >= channels[cid].amount;
                 let next_count = channels[cid].count + U256::from(1u64);
                 println!("Next count: {}", next_count);
                 let state = QueryState::consumer_generate(
@@ -619,21 +664,4 @@ async fn main() {
                             println!("Every 5 times will auto checkpoint...");
                             send_state(
                                 &web3,
-                                &contracts["StateChannel"],
-                                &channels[cid],
-                                "checkpoint",
-                                &consumer_sk,
-                            )
-                            .await;
-                        }
-                    }
-                    Err(err) => println!("\x1b[91m>>> Error: {}\x1b[00m", err),
-                }
-            }
-            _ => {
-                println!("\x1b[91mInvalid, type again!\x1b[00m");
-            }
-        }
-    }
-    rl.save_history("history.txt").unwrap();
-}
+                                &contracts["StateChanne

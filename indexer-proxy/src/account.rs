@@ -19,6 +19,7 @@
 use once_cell::sync::Lazy;
 use secp256k1::{SecretKey, ONE_KEY};
 use serde_json::json;
+use subql_proxy_utils::{error::Error, request::graphql_request, types::Result};
 use tokio::sync::RwLock;
 use web3::{
     signing::{Key, SecretKeyRef},
@@ -26,8 +27,6 @@ use web3::{
 };
 
 use crate::cli::COMMAND;
-use crate::request::graphql_request;
-use crate::{error::Error, types::Result};
 
 pub struct Account {
     pub indexer: Address,

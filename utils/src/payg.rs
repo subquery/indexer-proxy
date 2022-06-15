@@ -23,11 +23,6 @@ use rand_chacha::{
     ChaChaRng,
 };
 use serde_json::{json, Value};
-use warp::{
-    filters::header::headers_cloned,
-    http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
-    reject, Filter, Rejection,
-};
 use web3::{
     contract::tokens::Tokenizable,
     ethabi::encode,
@@ -35,109 +30,7 @@ use web3::{
     types::{Address, H256, U256},
 };
 
-use crate::account::ACCOUNT;
-use crate::cli::COMMAND;
 use crate::error::Error;
-use crate::request::graphql_request;
-use crate::types::WebResult;
-
-const BEARER: &str = "State ";
-pub const PRICE: u64 = 10; // TODO delete
-
-pub async fn open_state(body: &Value) -> Result<Value, Error> {
-    let mut state = OpenState::from_json(body)?;
-
-    let account = ACCOUNT.read().await;
-    let key = SecretKeyRef::new(&account.controller_sk);
-    state.sign(key, false)?;
-    drop(account);
-
-    let (_, _consumer) = state.recover()?;
-
-    let url = COMMAND.service_url();
-
-    let mdata = format!(
-        r#"mutation {{
-  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
-    lastPrice
-  }}
-}}
-"#,
-        state.channel_id,
-        state.indexer,
-        state.consumer,
-        state.amount,
-        state.expiration,
-        convert_sign_to_string(&state.indexer_sign),
-        convert_sign_to_string(&state.consumer_sign)
-    );
-
-    let query = json!({ "query": mdata });
-    let result = graphql_request(&url, &query)
-        .await
-        .map_err(|_| Error::ServiceException)?;
-    let price = result
-        .get("data")
-        .ok_or(Error::ServiceException)?
-        .get("channelOpen")
-        .ok_or(Error::ServiceException)?
-        .get("lastPrice")
-        .ok_or(Error::ServiceException)?
-        .as_i64()
-        .ok_or(Error::ServiceException)?;
-    state.next_price = U256::from(price);
-
-    Ok(state.to_json())
-}
-
-pub fn with_state() -> impl Filter<Extract = ((QueryState, Address),), Error = Rejection> + Clone {
-    headers_cloned()
-        .map(move |headers: HeaderMap<HeaderValue>| (headers))
-        .and_then(authorize)
-}
-
-async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Address)> {
-    let header = headers
-        .get(AUTHORIZATION)
-        .and_then(|x| x.to_str().ok())
-        .ok_or(reject::custom(Error::NoPermissionError))?;
-
-    let mut state = match serde_json::from_str::<Value>(header) {
-        Ok(v) => QueryState::from_json(&v)?,
-        Err(_) => return Err(reject::custom(Error::InvalidAuthHeaderError)),
-    };
-    state.next_price = U256::from(PRICE);
-
-    let account = ACCOUNT.read().await;
-    let key = SecretKeyRef::new(&account.controller_sk);
-    state.sign(key, false)?;
-    drop(account);
-    let (_, signer) = state.recover()?;
-
-    let url = COMMAND.service_url();
-    let mdata = format!(
-        r#"mutation {{
-  channelUpdate(id:"{:#X}", count:{}, isFinal:{}, price:{}, indexerSign:"0x{}", consumerSign:"0x{}") {{ id }}
-}}
-"#,
-        state.channel_id,
-        state.count,
-        state.is_final,
-        state.price,
-        convert_sign_to_string(&state.indexer_sign),
-        convert_sign_to_string(&state.consumer_sign)
-    );
-
-    let query = json!({ "query": mdata });
-    let result = graphql_request(&url, &query)
-        .await
-        .map_err(|_| reject::custom(Error::ServiceException))?;
-
-    println!("------------------------- 4: {}", result);
-    let _ = result.get("data").ok_or(reject::custom(Error::ServiceException))?;
-
-    Ok((state, signer))
-}
 
 pub struct OpenState {
     pub channel_id: U256,
@@ -145,6 +38,7 @@ pub struct OpenState {
     pub consumer: Address,
     pub amount: U256,
     pub expiration: U256,
+    pub callback: Vec<u8>,
     pub indexer_sign: Signature,
     pub consumer_sign: Signature,
     pub next_price: U256,
@@ -152,24 +46,31 @@ pub struct OpenState {
 
 impl OpenState {
     pub fn consumer_generate(
+        channel_id: Option<U256>,
         indexer: Address,
         consumer: Address,
         amount: U256,
         expiration: U256,
+        callback: Vec<u8>,
         key: SecretKeyRef,
     ) -> Result<Self, Error> {
-        let mut rng = ChaChaRng::from_entropy();
-        let mut id = [0u64; 4]; // u256
-        for i in 0..4 {
-            id[i] = rng.next_u64();
-        }
-        let channel_id = U256(id);
+        let channel_id = if let Some(channel_id) = channel_id {
+            channel_id
+        } else {
+            let mut rng = ChaChaRng::from_entropy();
+            let mut id = [0u64; 4]; // u256
+            for i in 0..4 {
+                id[i] = rng.next_u64();
+            }
+            U256(id)
+        };
         let mut state = Self {
             channel_id,
             indexer,
             consumer,
             amount,
             expiration,
+            callback,
             consumer_sign: default_sign(),
             indexer_sign: default_sign(),
             next_price: U256::from(0u64),
@@ -236,6 +137,8 @@ impl OpenState {
             .map_err(|_e| Error::InvalidSerialize)?;
         let expiration = U256::from_dec_str(params["expiration"].as_str().ok_or(Error::InvalidSerialize)?)
             .map_err(|_e| Error::InvalidSerialize)?;
+        let callback = hex::decode(params["callback"].as_str().ok_or(Error::InvalidSerialize)?)
+            .map_err(|_e| Error::InvalidSerialize)?;
         let indexer_sign: Signature =
             convert_string_to_sign(params["indexerSign"].as_str().ok_or(Error::InvalidSerialize)?);
         let consumer_sign: Signature =
@@ -248,6 +151,7 @@ impl OpenState {
             consumer,
             amount,
             expiration,
+            callback,
             indexer_sign,
             consumer_sign,
             next_price,
@@ -261,6 +165,7 @@ impl OpenState {
             "consumer": format!("{:?}", self.consumer),
             "amount": self.amount.to_string(),
             "expiration": self.expiration.to_string(),
+            "callback": hex::encode(&self.callback),
             "indexerSign": convert_sign_to_string(&self.indexer_sign),
             "consumerSign": convert_sign_to_string(&self.consumer_sign),
             "nextPrice": self.next_price.to_string(),

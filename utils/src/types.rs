@@ -16,4 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod http;
+use warp::Rejection;
+
+use crate::error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
+pub type WebResult<T> = std::result::Result<T, Rejection>;
