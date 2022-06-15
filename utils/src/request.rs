@@ -26,7 +26,7 @@ use serde_json::{json, Value};
 use serde_with::skip_serializing_none;
 
 use crate::{
-    constants::{APPLICATION_JSON, KEEP_ALIVE, AUTHORIZATION},
+    constants::{APPLICATION_JSON, AUTHORIZATION, KEEP_ALIVE},
     error::GraphQLServerError,
 };
 
@@ -68,7 +68,7 @@ pub async fn graphql_request(uri: &str, query: &Value) -> Result<Value, GraphQLS
     Ok(json_data)
 }
 
-// Request to indexer proxy
+// Request to indexer/consumer proxy
 pub async fn proxy_request(
     method: &str,
     url: &str,
