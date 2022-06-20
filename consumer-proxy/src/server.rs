@@ -18,13 +18,18 @@
 
 use serde_json::{json, Value};
 use std::net::Ipv4Addr;
-use warp::{reject, reply, Filter, Reply};
-
 use subql_proxy_utils::{
     constants::HEADERS,
     error::{handle_rejection, Error},
-    payg::{OpenState, QueryState},
+    payg::{convert_recovery_sign, convert_sign_to_bytes, convert_string_to_sign, OpenState, QueryState},
     types::WebResult,
+};
+use warp::{reject, reply, Filter, Reply};
+use web3::{
+    contract::tokens::Tokenizable,
+    ethabi::encode,
+    signing::{keccak256, recover},
+    types::{Address, U256},
 };
 
 use crate::cli::COMMAND;
@@ -71,7 +76,7 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
 }
 
 pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
-    let channel_id = payload
+    let channel_id: U256 = payload
         .get("channelId")
         .and_then(|v| v.as_str())
         .and_then(|v| v.parse().ok())
@@ -81,25 +86,37 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
         .and_then(|v| v.as_str())
         .and_then(|v| v.parse().ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
-    let amount = payload
+    let amount: U256 = payload
         .get("amount")
         .and_then(|v| v.as_str())
-        .and_then(|v| v.parse().ok())
+        .and_then(|v| U256::from_dec_str(v).ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
-    let expiration = payload
+    let expiration: U256 = payload
         .get("expiration")
         .and_then(|v| v.as_str())
-        .and_then(|v| v.parse().ok())
+        .and_then(|v| U256::from_dec_str(v).ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
-    let _consumer = payload
+    let consumer: Address = payload
         .get("consumer")
         .and_then(|v| v.as_str())
+        .and_then(|v| v.parse().ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
     let callback = payload
         .get("sign")
         .and_then(|v| v.as_str())
-        .and_then(|v| hex::decode(v).ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
+    let sign = convert_string_to_sign(callback);
+
+    // check the sign.
+    let msg = encode(&[channel_id.into_token(), amount.into_token()]);
+    let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
+    bytes.extend(keccak256(&msg));
+    let payload = keccak256(&bytes);
+    let (i_sign, i_id) = convert_recovery_sign(&sign);
+    let signer = recover(&payload, &i_sign, i_id).map_err(|_| Error::InvalidSignature)?;
+    if signer != consumer {
+        return Err(reject::custom(Error::InvalidSignature));
+    }
 
     // TODO handle consumer
     let state = OpenState::consumer_generate(
@@ -108,7 +125,7 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
         COMMAND.contract(),
         amount,
         expiration,
-        callback,
+        convert_sign_to_bytes(&sign),
         COMMAND.signer(),
     )?;
     let raw_state = serde_json::to_string(&state.to_json()).unwrap();

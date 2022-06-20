@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use subql_proxy_utils::{
-    payg::convert_sign_to_bytes,
+    payg::{convert_recovery_sign, convert_sign_to_bytes, convert_string_to_sign},
     request::{graphql_request, proxy_request},
 };
 use web3::{
@@ -35,7 +35,7 @@ use web3::{
         Contract, Options,
     },
     ethabi::encode,
-    signing::{keccak256, Key, SecretKeyRef},
+    signing::{keccak256, recover, Key, SecretKeyRef},
     transports::Http,
     types::{Address, Bytes, TransactionParameters, U256},
     Web3,
