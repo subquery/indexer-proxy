@@ -34,7 +34,6 @@ pub static COMMAND: Lazy<CommandLineArgs> = Lazy::new(|| CommandLineArgs::from_a
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Indexer Proxy", about = "Command line for starting indexer proxy server")]
-
 pub struct CommandLineArgs {
     /// Port the service will listen on
     #[structopt(short = "p", long = "port", default_value = "8003")]

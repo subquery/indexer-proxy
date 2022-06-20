@@ -75,30 +75,19 @@ pub struct CommandLineArgs {
     #[structopt(long = "dev")]
     pub dev: bool,
     /// Consumer proxy contract
-    #[structopt(long = "contract", default_value = "0x0000000000000000000000000000000000000000")]
+    #[structopt(long = "contract")]
     pub contract: String,
     /// Signer secret key
     #[structopt(long = "signer")]
     pub signer: String,
-    /// Indexer address for open state channel
-    #[structopt(long = "indexer", default_value = "")]
-    pub indexer: String,
-    /// Amount for open state channel
-    #[structopt(long = "amount", default_value = "")]
-    pub amount: String,
-    /// Expiration for open state channel
-    #[structopt(long = "expiration", default_value = "")]
-    pub expiration: String,
 }
 
 impl CommandLineArgs {
     pub fn parse(self) -> CommandArgs {
         let indexer = if let Some(url) = self.indexer_url {
             IndexerNetwork::Url(url.clone())
-        } else if let Some(addr) = self.indexer_p2p {
-            IndexerNetwork::P2p(addr)
         } else {
-            IndexerNetwork::Url("".to_owned()) // here is other bin
+            IndexerNetwork::P2p(self.indexer_p2p.unwrap())
         };
 
         let p2p = if self.relay {
@@ -116,9 +105,6 @@ impl CommandLineArgs {
             p2p: p2p,
             contract: self.contract.parse().unwrap(),
             signer: SecretKey::from_slice(&hex::decode(&self.signer).unwrap()).unwrap(),
-            open_indexer: self.indexer,
-            open_amount: self.amount,
-            open_expiration: self.expiration,
         }
     }
 }
@@ -132,9 +118,6 @@ pub struct CommandArgs {
     pub indexer: IndexerNetwork,
     pub contract: Address,
     pub signer: SecretKey,
-    pub open_indexer: String,
-    pub open_amount: String,
-    pub open_expiration: String,
 }
 
 #[allow(dead_code)]

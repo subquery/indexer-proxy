@@ -54,7 +54,7 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
 
     let mdata = format!(
         r#"mutation {{
-  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
+  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, callback:"0x{}", lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
     lastPrice
   }}
 }}
@@ -64,6 +64,7 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
         state.consumer,
         state.amount,
         state.expiration,
+        hex::encode(&state.callback),
         convert_sign_to_string(&state.indexer_sign),
         convert_sign_to_string(&state.consumer_sign)
     );

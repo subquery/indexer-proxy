@@ -70,7 +70,7 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
     Ok(reply::json(&json!("TODO")))
 }
 
-pub async fn open_payg(mut payload: Value) -> WebResult<impl Reply> {
+pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
     let channel_id = payload
         .get("channelId")
         .and_then(|v| v.as_str())

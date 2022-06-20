@@ -86,6 +86,7 @@ impl OpenState {
             self.consumer.into_token(),
             self.amount.into_token(),
             self.expiration.into_token(),
+            self.callback.clone().into_token(),
         ]);
         let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
         bytes.extend(keccak256(&msg));
@@ -104,6 +105,7 @@ impl OpenState {
             self.consumer.into_token(),
             self.amount.into_token(),
             self.expiration.into_token(),
+            self.callback.clone().into_token(),
         ]);
         let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
         bytes.extend(keccak256(&msg));
