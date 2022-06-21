@@ -34,7 +34,7 @@ use web3::types::Address;
 
 use crate::auth::{self, with_auth};
 use crate::payg::{open_state, with_state};
-use crate::project::get_project;
+use crate::project::{get_project, list_projects};
 use crate::{account, cli::COMMAND, prometheus};
 
 #[derive(Serialize)]
@@ -129,7 +129,8 @@ pub async fn query_handler(id: String, deployment_id: String, query: Value) -> W
 }
 
 pub async fn generate_payg(payload: Value) -> WebResult<impl Reply> {
-    let state = open_state(&payload).await.map_err(|e| reject::custom(e))?;
+    let mut state = open_state(&payload).await.map_err(|e| reject::custom(e))?;
+    state["projects"] = json!(list_projects());
     Ok(reply::json(&state))
 }
 

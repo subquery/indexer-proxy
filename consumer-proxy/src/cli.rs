@@ -37,14 +37,41 @@ pub enum IndexerNetwork {
 }
 
 impl IndexerNetwork {
-    pub async fn open(&self, indexer: String, raw_state: String) -> Result<Value, Value> {
+    pub async fn open(&self, state: String) -> Result<Value, Value> {
         match self {
-            IndexerNetwork::Url(url) => proxy_request("post", url, "open", "", raw_state, vec![]).await,
+            IndexerNetwork::Url(url) => proxy_request("post", url, "open", "", state, vec![]).await,
             IndexerNetwork::P2p(addr) => {
-                let data = json!({ "method": "open", "state": raw_state });
+                let data = json!({ "method": "open", "state": state });
                 let infos = serde_json::to_string(&data).unwrap();
-                let query = vec![Value::from(indexer), Value::from(infos)];
+                let query = vec![Value::from(format!("{}", addr)), Value::from(infos)];
                 jsonrpc_request(0, "127.0.0.1:8011", "state-channel", query).await
+            }
+        }
+    }
+
+    pub async fn query(&self, id: String, query: String, state: String) -> Result<Value, Value> {
+        match self {
+            IndexerNetwork::Url(url) => {
+                proxy_request(
+                    "post",
+                    url,
+                    &format!("payg/{}", id),
+                    "",
+                    query,
+                    vec![("Authorization".to_owned(), state)],
+                )
+                .await
+            }
+            IndexerNetwork::P2p(addr) => {
+                let query_sign = json!({ "method": "query", "state": state });
+                let raw_state = serde_json::to_string(&query_sign).unwrap();
+                let query = vec![
+                    Value::from(format!("{}", addr)),
+                    Value::from(id),
+                    Value::from(query),
+                    Value::from(raw_state),
+                ];
+                jsonrpc_request(0, "127.0.0.1:8011", "query-sync", query).await
             }
         }
     }

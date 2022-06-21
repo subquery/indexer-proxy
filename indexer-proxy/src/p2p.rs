@@ -27,7 +27,7 @@ use web3::{signing::SecretKeyRef, types::U256};
 
 use crate::account::ACCOUNT;
 use crate::payg::{open_state, PRICE};
-use crate::project::get_project;
+use crate::project::{get_project, list_projects};
 
 pub struct IndexerP2p;
 
@@ -72,7 +72,10 @@ async fn handle(infos: &str) -> Response {
             Response::Sign(serde_json::to_string(&data).unwrap())
         }
         "open" => match open_state(&params).await {
-            Ok(state) => Response::Sign(serde_json::to_string(&state["state"]).unwrap()),
+            Ok(mut state) => {
+                state["projects"] = json!(list_projects());
+                Response::Sign(serde_json::to_string(&state).unwrap())
+            }
             Err(err) => Response::Error(err.to_string()),
         },
         "query" => match QueryState::from_json(&params["state"]) {

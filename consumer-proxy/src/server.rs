@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::net::Ipv4Addr;
 use subql_proxy_utils::{
     constants::HEADERS,
@@ -33,6 +33,7 @@ use web3::{
 };
 
 use crate::cli::COMMAND;
+use crate::payg::{add_project, StateChannel};
 
 pub async fn start_server(host: &str, port: u16) {
     // query with agreement.
@@ -47,9 +48,13 @@ pub async fn start_server(host: &str, port: u16) {
         .and(warp::body::json())
         .and_then(open_payg);
 
+    // graphql playground page.
+    let pg_route = warp::path!("graphql").map(|| reply::html(include_str!("./playground.html")));
+
     // chain the routes
     let routes = query_route
         .or(open_route)
+        .or(pg_route)
         .recover(|err| handle_rejection(err, COMMAND.dev()));
     let cors = warp::cors()
         .allow_any_origin()
@@ -61,18 +66,27 @@ pub async fn start_server(host: &str, port: u16) {
 }
 
 pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
-    //let state = QueryState::consumer_generate();
-    // let query_url = match get_project(&id) {
-    //     Ok(url) => url,
-    //     Err(e) => return Err(reject::custom(e)),
-    // };
+    let channel = StateChannel::get(&id).await?;
+    let state = channel.next_query(COMMAND.signer())?;
 
-    // let response = graphql_request(&query_url, &query).await;
-    // match response {
-    //     Ok(result) => Ok(reply::json(&result)),
-    //     Err(e) => Err(reject::custom(e)),
-    // }
-    Ok(reply::json(&json!("TODO")))
+    let raw_state = serde_json::to_string(&state.to_json()).unwrap();
+    let raw_query = serde_json::to_string(&query).unwrap();
+    let res = COMMAND.indexer.query(id, raw_query, raw_state).await;
+
+    match res {
+        Ok(fulldata) => {
+            let (query, raw_data) = (&fulldata[0], &fulldata[1]);
+
+            // TODO save state to db.
+            let _state = QueryState::from_json(&raw_data).unwrap();
+
+            Ok(reply::json(&query))
+        }
+        Err(err) => {
+            info!("Open Error: {}", err);
+            Err(reject::custom(Error::ServiceException))
+        }
+    }
 }
 
 pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
@@ -129,12 +143,23 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
         COMMAND.signer(),
     )?;
     let raw_state = serde_json::to_string(&state.to_json()).unwrap();
-    let res = COMMAND.indexer.open(format!("{:?}", indexer), raw_state).await;
+    let res = COMMAND.indexer.open(raw_state).await;
 
     match res {
         Ok(data) => {
-            let _state = OpenState::from_json(&data).unwrap();
-            // TODO save state to db.
+            let state = OpenState::from_json(&data).unwrap();
+            let channel = state.channel_id;
+            let projects: Vec<String> = data
+                .get("projects")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|v| v.as_str().unwrap_or("").to_owned())
+                .collect();
+            StateChannel::add(state).await;
+            for project in projects {
+                add_project(project, channel).await;
+            }
             Ok(reply::json(&data))
         }
         Err(err) => {

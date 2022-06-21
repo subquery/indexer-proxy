@@ -136,7 +136,7 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String> {
     Ok(auth_header.trim_start_matches(BEARER).to_owned())
 }
 
-fn verify_message(payload: &Payload) -> Result<bool> {
+fn _verify_message(payload: &Payload) -> Result<bool> {
     let message = format!("{}{}{}", payload.indexer, payload.deployment_id, payload.timestamp);
     let signer = recover_signer(message, &payload.signature);
 
