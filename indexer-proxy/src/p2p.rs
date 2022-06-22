@@ -18,16 +18,12 @@
 
 use async_trait::async_trait;
 use serde_json::{json, Value};
-use subql_proxy_utils::{
-    p2p::{P2pHandler, Request, Response},
-    payg::QueryState,
-    request::graphql_request,
-};
-use web3::{signing::SecretKeyRef, types::U256};
+use subql_proxy_utils::p2p::{P2pHandler, Request, Response};
+use web3::types::U256;
 
 use crate::account::ACCOUNT;
-use crate::payg::{open_state, PRICE};
-use crate::project::{get_project, list_projects};
+use crate::payg::{open_state, query_state, PRICE};
+use crate::project::list_projects;
 
 pub struct IndexerP2p;
 
@@ -36,16 +32,17 @@ impl P2pHandler for IndexerP2p {
     async fn request(request: Request) -> Response {
         // handle request
         match request {
-            Request::Query(project, query, sign) => {
-                let res_data = query_request(project, query).await;
-                let res_sign = if sign.len() > 0 {
-                    handle(&sign).await
-                } else {
-                    Response::Sign("".to_owned())
-                };
-                res_data.with_sign(res_sign)
+            Request::StateChannel(infos) => channel_handle(&infos).await,
+            Request::Info => {
+                let account = ACCOUNT.read().await;
+                let data = json!({
+                    "indexer": format!("{:?}", account.indexer),
+                    "controller": format!("{:?}", account.controller),
+                    "price": U256::from(PRICE),
+                });
+                drop(account);
+                Response::Data(serde_json::to_string(&data).unwrap())
             }
-            Request::StateChannel(infos) => handle(&infos).await,
         }
     }
 
@@ -55,63 +52,38 @@ impl P2pHandler for IndexerP2p {
 }
 
 /// Handle the state channel request/response infos.
-async fn handle(infos: &str) -> Response {
+async fn channel_handle(infos: &str) -> Response {
     let params = serde_json::from_str::<Value>(infos).unwrap_or(Value::default());
     if params.get("method").is_none() || params.get("state").is_none() {
         return Response::Error("Invalid request".to_owned());
     }
+    let state_res = serde_json::from_str::<Value>(&params["state"].as_str().unwrap());
+    if state_res.is_err() {
+        return Response::Error("Invalid request state".to_owned());
+    }
+    let state = state_res.unwrap(); // safe unwrap.
     match params["method"].as_str().unwrap() {
-        "info" => {
-            let account = ACCOUNT.read().await;
-            let data = json!({
-                "indexer": format!("{:?}", account.indexer),
-                "controller": format!("{:?}", account.controller),
-                "price": U256::from(PRICE),
-            });
-            drop(account);
-            Response::Sign(serde_json::to_string(&data).unwrap())
-        }
-        "open" => match open_state(&params).await {
+        "open" => match open_state(&state).await {
             Ok(mut state) => {
                 state["projects"] = json!(list_projects());
-                Response::Sign(serde_json::to_string(&state).unwrap())
+                Response::StateChannel(serde_json::to_string(&state).unwrap())
             }
             Err(err) => Response::Error(err.to_string()),
         },
-        "query" => match QueryState::from_json(&params["state"]) {
-            Ok(mut state) => {
-                state.next_price = U256::from(PRICE);
-                let account = ACCOUNT.read().await;
-                let key = SecretKeyRef::new(&account.controller_sk);
-                match state.sign(key, false) {
-                    Err(err) => return Response::Error(err.to_string()),
-                    _ => {}
+        "query" => {
+            if params.get("project").is_none() || params.get("query").is_none() {
+                return Response::Error("Invalid request".to_owned());
+            }
+            let project = params.get("project").unwrap().as_str().unwrap();
+            let query_raw = params.get("query").unwrap().as_str().unwrap();
+            let query: Value = serde_json::from_str(query_raw).unwrap();
+            match query_state(project, &state, &query).await {
+                Ok((state, query)) => {
+                    Response::StateChannel(serde_json::to_string(&json!(vec![query, state])).unwrap())
                 }
-                let _signer = match state.recover() {
-                    Ok((_, consumer)) => consumer,
-                    Err(err) => return Response::Error(err.to_string()),
-                };
-                drop(account);
-
-                // TODO query state to coordiantor
-
-                Response::Sign(serde_json::to_string(&state.to_json()).unwrap())
+                Err(err) => Response::Error(err.to_string()),
             }
-            Err(err) => Response::Error(err.to_string()),
-        },
+        }
         _ => Response::Error("Invalid request".to_owned()),
-    }
-}
-
-async fn query_request(project: String, query: String) -> Response {
-    match (get_project(&project), serde_json::from_str(&query)) {
-        (Ok(url), Ok(query)) => match graphql_request(&url, &query).await {
-            Ok(value) => match value.pointer("/data") {
-                Some(data) => Response::RawData(serde_json::to_string(data).unwrap()),
-                _ => Response::Error("Data is missing".to_owned()),
-            },
-            Err(err) => Response::Error(err.to_string()),
-        },
-        _ => Response::Error("Project is missing".to_owned()),
     }
 }

@@ -30,7 +30,7 @@ enum ChannelStatus {
 }
 
 pub struct StateChannel {
-    id: U256,
+    pub id: U256,
     status: ChannelStatus,
     indexer: Address,
     consumer: Address,
@@ -87,6 +87,20 @@ impl StateChannel {
             is_final,
             sk,
         )
+    }
+
+    pub async fn renew(id: U256, state: QueryState) {
+        if let Some(channel) = CHANNELS.write().await.get_mut(&id) {
+            // TODO if next_price != last_price, checkpoint chain.
+            // TODO adjust the count number if current_count != remote_count.
+
+            channel.current_count = state.count;
+            channel.remote_count = state.count;
+            channel.last_price = state.next_price;
+            channel.last_final = state.is_final;
+            channel.last_indexer_sign = state.indexer_sign;
+            channel.last_consumer_sign = state.consumer_sign;
+        }
     }
 }
 

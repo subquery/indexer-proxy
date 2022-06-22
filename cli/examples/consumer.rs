@@ -16,19 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use async_trait::async_trait;
 use rustyline::{error::ReadlineError, Editor};
 use secp256k1::SecretKey;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env::args;
 use std::path::PathBuf;
-use subql_proxy::{
-    p2p::libp2p::identity::Keypair,
-    p2p::{
-        server::server,
-        utils::http::{jsonrpc_request, proxy_request},
-    },
-    payg::{convert_sign_to_bytes, OpenState, QueryState},
+use subql_proxy_utils::{
+    p2p::{libp2p::identity::Keypair, server::server, P2pHandler, Request, Response},
+    payg::{convert_sign_to_bytes, default_sign, OpenState, QueryState},
+    request::{jsonrpc_request, proxy_request},
 };
 use web3::{
     api::Eth,
@@ -39,7 +37,7 @@ use web3::{
     ethabi::{encode, Token},
     signing::{keccak256, Key, SecretKeyRef, Signature},
     transports::Http,
-    types::{Address, Bytes, TransactionParameters, H256, U256},
+    types::{Address, Bytes, TransactionParameters, U256},
     Web3,
 };
 
@@ -80,11 +78,16 @@ struct StateChannel {
     info_project: String, // project ID
 }
 
-fn default_sign() -> Signature {
-    Signature {
-        v: 0,
-        r: H256::from([0u8; 32]),
-        s: H256::from([0u8; 32]),
+pub struct ConsumerP2p;
+
+#[async_trait]
+impl P2pHandler for ConsumerP2p {
+    async fn request(_request: Request) -> Response {
+        todo!()
+    }
+
+    async fn event() {
+        todo!()
     }
 }
 
@@ -221,9 +224,10 @@ async fn main() {
         let p2p_key = Keypair::from_protobuf_encoding(&key_bytes).unwrap();
 
         tokio::spawn(async move {
-            server(
+            server::<ConsumerP2p>(
                 "/ip4/0.0.0.0/tcp/0".parse().unwrap(),
                 "127.0.0.1:7777".parse().unwrap(),
+                None,
                 None,
                 p2p_key,
             )
@@ -376,10 +380,12 @@ async fn main() {
                         let expiration = U256::from_dec_str(next_params.next().unwrap()).unwrap();
 
                         let state = OpenState::consumer_generate(
+                            None,
                             indexer,
                             consumer,
                             amount,
                             expiration,
+                            vec![],
                             SecretKeyRef::new(&consumer_sk),
                         )
                         .unwrap();
@@ -541,29 +547,7 @@ async fn main() {
                 data.insert("query", params);
 
                 if channels.len() == 0 {
-                    println!("\x1b[91mNo Channel, Query directly!\x1b[00m");
-                    let res = if is_p2p {
-                        let query = vec![
-                            Value::from(current_indexer.as_str()),
-                            Value::from(current_project.as_str()),
-                            Value::from(serde_json::to_string(&data).unwrap()),
-                        ];
-                        jsonrpc_request(0, url, "query-sync", query).await
-                    } else {
-                        proxy_request(
-                            "post",
-                            PROXY_URL,
-                            &format!("query/{}", current_project),
-                            PROXY_TOKEN,
-                            serde_json::to_string(&data).unwrap(),
-                            vec![],
-                        )
-                        .await
-                    };
-                    match res {
-                        Ok(data) => println!("\x1b[94m>>> Result: {}\x1b[00m", data),
-                        Err(err) => println!("\x1b[91m>>> Error: {}\x1b[00m", err),
-                    }
+                    println!("\x1b[91mNo Channel, please open or add Channel!\x1b[00m");
                     continue;
                 }
 
@@ -583,15 +567,14 @@ async fn main() {
                 let raw_query = serde_json::to_string(&data).unwrap();
                 let raw_state = serde_json::to_string(&state.to_json()).unwrap();
                 let res = if is_p2p {
-                    let query_sign = json!({ "method": "query", "state": raw_state });
                     let query = vec![
                         Value::from(channels[cid].info_indexer.as_str()),
                         Value::from(channels[cid].info_project.as_str()),
                         Value::from(raw_query),
-                        Value::from(serde_json::to_string(&query_sign).unwrap()),
+                        Value::from(raw_state),
                     ];
 
-                    jsonrpc_request(0, url, "query-sync", query).await
+                    jsonrpc_request(0, url, "payg-sync", query).await
                 } else {
                     proxy_request(
                         "post",

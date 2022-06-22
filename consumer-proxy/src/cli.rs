@@ -18,7 +18,7 @@
 
 use once_cell::sync::Lazy;
 use secp256k1::SecretKey;
-use serde_json::{json, Value};
+use serde_json::Value;
 use structopt::StructOpt;
 use subql_proxy_utils::request::{jsonrpc_request, proxy_request};
 use web3::{signing::SecretKeyRef, types::Address};
@@ -33,18 +33,16 @@ pub static COMMAND: Lazy<CommandArgs> = Lazy::new(|| CommandLineArgs::from_args(
 
 pub enum IndexerNetwork {
     Url(String),
-    P2p(Multiaddr),
+    P2p(String),
 }
 
 impl IndexerNetwork {
     pub async fn open(&self, state: String) -> Result<Value, Value> {
         match self {
             IndexerNetwork::Url(url) => proxy_request("post", url, "open", "", state, vec![]).await,
-            IndexerNetwork::P2p(addr) => {
-                let data = json!({ "method": "open", "state": state });
-                let infos = serde_json::to_string(&data).unwrap();
-                let query = vec![Value::from(format!("{}", addr)), Value::from(infos)];
-                jsonrpc_request(0, "127.0.0.1:8011", "state-channel", query).await
+            IndexerNetwork::P2p(pid) => {
+                let query = vec![Value::from(format!("{}", pid)), Value::from(state)];
+                jsonrpc_request(0, "http://127.0.0.1:8011", "state-channel", query).await
             }
         }
     }
@@ -62,16 +60,14 @@ impl IndexerNetwork {
                 )
                 .await
             }
-            IndexerNetwork::P2p(addr) => {
-                let query_sign = json!({ "method": "query", "state": state });
-                let raw_state = serde_json::to_string(&query_sign).unwrap();
+            IndexerNetwork::P2p(pid) => {
                 let query = vec![
-                    Value::from(format!("{}", addr)),
+                    Value::from(format!("{}", pid)),
                     Value::from(id),
                     Value::from(query),
-                    Value::from(raw_state),
+                    Value::from(state),
                 ];
-                jsonrpc_request(0, "127.0.0.1:8011", "query-sync", query).await
+                jsonrpc_request(0, "http://127.0.0.1:8011", "payg-sync", query).await
             }
         }
     }
@@ -89,9 +85,9 @@ pub struct CommandLineArgs {
     /// Indexer service endpoint
     #[structopt(long = "indexer-url", short = "i")]
     pub indexer_url: Option<String>,
-    /// Indexer service endpoint
+    /// Indexer p2p Peer Id
     #[structopt(long = "indexer-p2p")]
-    pub indexer_p2p: Option<Multiaddr>,
+    pub indexer_p2p: Option<String>,
     /// Check if running p2p as relay.
     #[structopt(long = "relay")]
     pub relay: bool,

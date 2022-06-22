@@ -17,15 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use async_trait::async_trait;
-use subql_proxy_utils::{
-    p2p::{P2pHandler, Request, Response},
-};
+use subql_proxy_utils::p2p::{P2pHandler, Request, Response};
 
 pub struct ConsumerP2p;
 
 #[async_trait]
 impl P2pHandler for ConsumerP2p {
-    async fn request(request: Request) -> Response {
+    async fn request(_request: Request) -> Response {
         todo!()
     }
 

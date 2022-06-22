@@ -67,6 +67,7 @@ pub async fn start_server(host: &str, port: u16) {
 
 pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
     let channel = StateChannel::get(&id).await?;
+    let channel_id = channel.id;
     let state = channel.next_query(COMMAND.signer())?;
 
     let raw_state = serde_json::to_string(&state.to_json()).unwrap();
@@ -77,8 +78,9 @@ pub async fn query_handler(id: String, query: Value) -> WebResult<impl Reply> {
         Ok(fulldata) => {
             let (query, raw_data) = (&fulldata[0], &fulldata[1]);
 
-            // TODO save state to db.
-            let _state = QueryState::from_json(&raw_data).unwrap();
+            // save state to db.
+            let state = QueryState::from_json(&raw_data).unwrap();
+            StateChannel::renew(channel_id, state).await;
 
             Ok(reply::json(&query))
         }

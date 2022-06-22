@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use subql_proxy_utils::{
-    payg::{convert_recovery_sign, convert_sign_to_bytes, convert_string_to_sign},
+    payg::convert_sign_to_bytes,
     request::{graphql_request, proxy_request},
 };
 use web3::{
@@ -34,8 +34,8 @@ use web3::{
         tokens::{Tokenizable, Tokenize},
         Contract, Options,
     },
-    ethabi::encode,
-    signing::{keccak256, recover, Key, SecretKeyRef},
+    ethabi::{encode, Token},
+    signing::{keccak256, Key, SecretKeyRef},
     transports::Http,
     types::{Address, Bytes, TransactionParameters, U256},
     Web3,
@@ -91,6 +91,17 @@ enum Cli {
         amount: u128,
         #[structopt(short, long)]
         expiration: u128,
+    },
+    /// Channel show on-chain info.
+    ChannelShow {
+        #[structopt(short, long)]
+        endpoint: String,
+        #[structopt(short, long)]
+        deploy: String,
+        #[structopt(short, long)]
+        contracts: String,
+        #[structopt(short, long)]
+        id: String,
     },
 }
 
@@ -155,6 +166,34 @@ async fn main() {
             let indexer = SecretKey::from_slice(&hex::decode(INDEXER).unwrap()).unwrap();
             let indexer_addr = SecretKeyRef::new(&indexer).address();
             open_channel_with_consumer(&consumer, indexer_addr, amount, expiration).await;
+        }
+        Cli::ChannelShow {
+            endpoint,
+            deploy,
+            contracts,
+            id,
+        } => {
+            let id: U256 = id.parse().unwrap();
+            let (_web3, contracts, _miner, _indexer, _controller, _consumer) =
+                init(endpoint, deploy, contracts, false).await.unwrap();
+            let result: (Token,) = contracts["StateChannel"]
+                .query("channel", (id,), None, Options::default(), None)
+                .await
+                .unwrap();
+            match result.0 {
+                Token::Tuple(data) => {
+                    let count: U256 = data[3].clone().into_uint().unwrap().into();
+                    let amount: U256 = data[4].clone().into_uint().unwrap().into();
+                    let expiration: U256 = data[5].clone().into_uint().unwrap().into();
+                    println!("State Channel Status: {}", data[0]);
+                    println!(" Indexer:  0x{}", data[1]);
+                    println!(" Consumer: 0x{}", data[2]);
+                    println!(" Count On-chain: {:?}", count);
+                    println!(" Amount:         {:?}", amount);
+                    println!(" Expiration:     {:?}", expiration);
+                }
+                _ => {}
+            }
         }
     }
 }
