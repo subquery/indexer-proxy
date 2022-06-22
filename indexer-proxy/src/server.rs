@@ -24,16 +24,14 @@ use serde_json::{json, Value};
 use subql_proxy_utils::{
     constants::HEADERS,
     error::{handle_rejection, Error},
-    payg::QueryState,
     query::METADATA_QUERY,
     request::graphql_request,
     types::WebResult,
 };
 use warp::{reject, reply, Filter, Reply};
-use web3::types::Address;
 
 use crate::auth::{self, with_auth};
-use crate::payg::{open_state, with_state};
+use crate::payg::{open_state, query_state, with_state};
 use crate::project::get_project;
 use crate::{account, cli::COMMAND, prometheus};
 
@@ -133,24 +131,10 @@ pub async fn generate_payg(payload: Value) -> WebResult<impl Reply> {
     Ok(reply::json(&state))
 }
 
-pub async fn payg_handler(id: String, state: (QueryState, Address), query: Value) -> WebResult<impl Reply> {
-    let query_url = match get_project(&id) {
-        Ok(url) => url,
-        Err(e) => return Err(reject::custom(e)),
-    };
+pub async fn payg_handler(id: String, state: Value, query: Value) -> WebResult<impl Reply> {
+    let (state_data, query_data) = query_state(&id, &state, &query).await?;
     prometheus::push_query_metrics(id);
-
-    match graphql_request(&query_url, &query).await {
-        Ok(result) => {
-            let string = serde_json::to_string(&result).unwrap(); // safe unwrap
-            let _sign = account::sign_message(&string.as_bytes()); // TODO add to header
-
-            // TODO add state to header and request to coordiantor know the response.
-            let (state, _signer) = state;
-            Ok(reply::json(&json!([result, state.to_json()])))
-        }
-        Err(e) => Err(reject::custom(e)),
-    }
+    Ok(reply::json(&json!([query_data, state_data])))
 }
 
 pub async fn metadata_handler(id: String) -> WebResult<impl Reply> {

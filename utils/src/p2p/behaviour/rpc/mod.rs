@@ -64,40 +64,21 @@ impl From<&str> for HttpMethod {
 /// Rpc Request type.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Request {
-    /// consumer query info to indexer.
-    /// query project id, query info. query sign.
-    Query(String, String, String),
-    /// state channel info.
+    /// request the node's info about indexer
+    Info,
+    /// state channel JSON info.
     StateChannel(String),
 }
 
 /// Rpc Request type.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Response {
-    /// data query from indexer.
-    RawData(String),
-    /// sign with query.
-    Sign(String),
-    /// data query from indexer and sign with data.
-    Data(String, String),
-    /// state channel info.
+    /// data response.
+    Data(String),
+    /// state channel JSON response info.
     StateChannel(String),
     /// error response.
     Error(String),
-}
-
-impl Response {
-    pub fn with_sign(self, sign: Response) -> Response {
-        let data = match self {
-            Response::RawData(data) => data,
-            _ => return self,
-        };
-        let sign = match sign {
-            Response::Sign(sign) => sign,
-            _ => "".to_owned(),
-        };
-        Response::Data(data, sign)
-    }
 }
 
 /// An inbound request or response.

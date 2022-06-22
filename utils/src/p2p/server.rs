@@ -94,29 +94,15 @@ pub async fn server<T: P2pHandler>(
                 SwarmEvent::Behaviour(event) => match event {
                     NetworkEvent::Rpc(msg) => match msg {
                         RpcEvent::Message { peer: _, message } => match message {
-                            NetworkRpcMessage::Request {
-                                request_id,
-                                request,
-                            } => {
+                            NetworkRpcMessage::Request { request_id, request } => {
                                 debug!("Got request: {:?}", request);
                                 let res = T::request(request).await;
                                 let _ = swarm.behaviour_mut().rpc.response(request_id, res);
                             }
-                            NetworkRpcMessage::Response {
-                                request_id,
-                                response,
-                            } => {
+                            NetworkRpcMessage::Response { request_id, response } => {
                                 debug!("Got response: {:?}", response);
                                 let res = match response {
-                                    Response::RawData(data) => {
-                                        rpc_response(0, "query", RpcParam::from(data))
-                                    }
-                                    Response::Sign(sign) => {
-                                        rpc_response(0, "sign", RpcParam::from(sign))
-                                    }
-                                    Response::Data(data, sign) => {
-                                        rpc_response(0, "query", RpcParam::from(vec![data, sign]))
-                                    }
+                                    Response::Data(data) => rpc_response(0, "data", RpcParam::from(data)),
                                     Response::Error(msg) => rpc_error(0, &msg),
                                     Response::StateChannel(infos) => {
                                         rpc_response(0, "state-channel", RpcParam::from(infos))
@@ -145,10 +131,7 @@ pub async fn server<T: P2pHandler>(
                         } => {
                             // handle receive request/response error.
                         }
-                        RpcEvent::ResponseSent {
-                            peer: _,
-                            request_id: _,
-                        } => {
+                        RpcEvent::ResponseSent { peer: _, request_id: _ } => {
                             // handle send response success.
                         }
                     },
@@ -212,10 +195,7 @@ pub async fn server<T: P2pHandler>(
                                     let _ = swarm.behaviour_mut().group.add_node_to_group(gid, pid);
                                 }
                                 Event::GroupDelNode(gid, pid) => {
-                                    let _ = swarm
-                                        .behaviour_mut()
-                                        .group
-                                        .remove_node_from_group(gid, pid);
+                                    let _ = swarm.behaviour_mut().group.remove_node_from_group(gid, pid);
                                 }
                             }
                         } else {

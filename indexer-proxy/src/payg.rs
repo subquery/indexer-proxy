@@ -30,18 +30,18 @@ use warp::{
     http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
     reject, Filter, Rejection,
 };
-use web3::{
-    signing::SecretKeyRef,
-    types::{Address, U256},
-};
+use web3::{signing::SecretKeyRef, types::U256};
 
 use crate::account::ACCOUNT;
 use crate::cli::COMMAND;
+use crate::project::get_project;
 
 pub const PRICE: u64 = 10; // TODO delete
 
 pub async fn open_state(body: &Value) -> Result<Value, Error> {
     let mut state = OpenState::from_json(body)?;
+
+    // TODO check project is exists. unify the deployment id store style.
 
     let account = ACCOUNT.read().await;
     let key = SecretKeyRef::new(&account.controller_sk);
@@ -54,7 +54,7 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
 
     let mdata = format!(
         r#"mutation {{
-  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
+  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, deploymentId:"0x{}", callback:"0x{}", lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
     lastPrice
   }}
 }}
@@ -64,6 +64,8 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
         state.consumer,
         state.amount,
         state.expiration,
+        hex::encode(&state.deployment_id),
+        hex::encode(&state.callback),
         convert_sign_to_string(&state.indexer_sign),
         convert_sign_to_string(&state.consumer_sign)
     );
@@ -86,30 +88,33 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
     Ok(state.to_json())
 }
 
-pub fn with_state() -> impl Filter<Extract = ((QueryState, Address),), Error = Rejection> + Clone {
-    headers_cloned()
-        .map(move |headers: HeaderMap<HeaderValue>| (headers))
-        .and_then(authorize)
-}
+pub async fn query_state(project: &str, state: &Value, query: &Value) -> Result<(Value, Value), Error> {
+    let query_url = get_project(project)?;
 
-async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Address)> {
-    let header = headers
-        .get(AUTHORIZATION)
-        .and_then(|x| x.to_str().ok())
-        .ok_or(reject::custom(Error::NoPermissionError))?;
-
-    let mut state = match serde_json::from_str::<Value>(header) {
-        Ok(v) => QueryState::from_json(&v)?,
-        Err(_) => return Err(reject::custom(Error::InvalidAuthHeaderError)),
-    };
+    let mut state = QueryState::from_json(state)?;
     state.next_price = U256::from(PRICE);
 
     let account = ACCOUNT.read().await;
     let key = SecretKeyRef::new(&account.controller_sk);
     state.sign(key, false)?;
     drop(account);
-    let (_, signer) = state.recover()?;
+    let (_, _signer) = state.recover()?;
+    // TODO more verify the signer
 
+    // query the data.
+    let data = match graphql_request(&query_url, query).await {
+        Ok(result) => {
+            let string = serde_json::to_string(&result).unwrap(); // safe unwrap
+            let _sign = crate::account::sign_message(&string.as_bytes()); // TODO add to header
+
+            // TODO add state to header and request to coordiantor know the response.
+
+            Ok(result)
+        }
+        Err(_e) => Err(Error::ServiceException),
+    }?;
+
+    // query the state.
     let url = COMMAND.service_url();
     let mdata = format!(
         r#"mutation {{
@@ -127,9 +132,22 @@ async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<(QueryState, Ad
     let query = json!({ "query": mdata });
     let result = graphql_request(&url, &query)
         .await
-        .map_err(|_| reject::custom(Error::ServiceException))?;
+        .map_err(|_| Error::ServiceException)?;
+    let _ = result.get("data").ok_or(Error::ServiceException)?;
 
-    let _ = result.get("data").ok_or(reject::custom(Error::ServiceException))?;
+    Ok((state.to_json(), data))
+}
 
-    Ok((state, signer))
+pub fn with_state() -> impl Filter<Extract = (Value,), Error = Rejection> + Clone {
+    headers_cloned()
+        .map(move |headers: HeaderMap<HeaderValue>| (headers))
+        .and_then(authorize)
+}
+
+async fn authorize(headers: HeaderMap<HeaderValue>) -> WebResult<Value> {
+    let header = headers
+        .get(AUTHORIZATION)
+        .and_then(|x| x.to_str().ok())
+        .ok_or(reject::custom(Error::NoPermissionError))?;
+    serde_json::from_str::<Value>(header).map_err(|_| reject::custom(Error::InvalidAuthHeaderError))
 }

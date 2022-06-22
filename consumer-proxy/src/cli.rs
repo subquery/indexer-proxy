@@ -18,7 +18,7 @@
 
 use once_cell::sync::Lazy;
 use secp256k1::SecretKey;
-use serde_json::{json, Value};
+use serde_json::Value;
 use structopt::StructOpt;
 use subql_proxy_utils::request::{jsonrpc_request, proxy_request};
 use web3::{signing::SecretKeyRef, types::Address};
@@ -33,18 +33,41 @@ pub static COMMAND: Lazy<CommandArgs> = Lazy::new(|| CommandLineArgs::from_args(
 
 pub enum IndexerNetwork {
     Url(String),
-    P2p(Multiaddr),
+    P2p(String),
 }
 
 impl IndexerNetwork {
-    pub async fn open(&self, indexer: String, raw_state: String) -> Result<Value, Value> {
+    pub async fn open(&self, state: String) -> Result<Value, Value> {
         match self {
-            IndexerNetwork::Url(url) => proxy_request("post", url, "open", "", raw_state, vec![]).await,
-            IndexerNetwork::P2p(addr) => {
-                let data = json!({ "method": "open", "state": raw_state });
-                let infos = serde_json::to_string(&data).unwrap();
-                let query = vec![Value::from(indexer), Value::from(infos)];
-                jsonrpc_request(0, "127.0.0.1:8011", "state-channel", query).await
+            IndexerNetwork::Url(url) => proxy_request("post", url, "open", "", state, vec![]).await,
+            IndexerNetwork::P2p(pid) => {
+                let query = vec![Value::from(format!("{}", pid)), Value::from(state)];
+                jsonrpc_request(0, "http://127.0.0.1:8011", "state-channel", query).await
+            }
+        }
+    }
+
+    pub async fn query(&self, id: String, query: String, state: String) -> Result<Value, Value> {
+        match self {
+            IndexerNetwork::Url(url) => {
+                proxy_request(
+                    "post",
+                    url,
+                    &format!("payg/{}", id),
+                    "",
+                    query,
+                    vec![("Authorization".to_owned(), state)],
+                )
+                .await
+            }
+            IndexerNetwork::P2p(pid) => {
+                let query = vec![
+                    Value::from(format!("{}", pid)),
+                    Value::from(id),
+                    Value::from(query),
+                    Value::from(state),
+                ];
+                jsonrpc_request(0, "http://127.0.0.1:8011", "payg-sync", query).await
             }
         }
     }
@@ -62,9 +85,9 @@ pub struct CommandLineArgs {
     /// Indexer service endpoint
     #[structopt(long = "indexer-url", short = "i")]
     pub indexer_url: Option<String>,
-    /// Indexer service endpoint
+    /// Indexer p2p Peer Id
     #[structopt(long = "indexer-p2p")]
-    pub indexer_p2p: Option<Multiaddr>,
+    pub indexer_p2p: Option<String>,
     /// Check if running p2p as relay.
     #[structopt(long = "relay")]
     pub relay: bool,
@@ -75,30 +98,19 @@ pub struct CommandLineArgs {
     #[structopt(long = "dev")]
     pub dev: bool,
     /// Consumer proxy contract
-    #[structopt(long = "contract", default_value = "0x0000000000000000000000000000000000000000")]
+    #[structopt(long = "contract")]
     pub contract: String,
     /// Signer secret key
     #[structopt(long = "signer")]
     pub signer: String,
-    /// Indexer address for open state channel
-    #[structopt(long = "indexer", default_value = "")]
-    pub indexer: String,
-    /// Amount for open state channel
-    #[structopt(long = "amount", default_value = "")]
-    pub amount: String,
-    /// Expiration for open state channel
-    #[structopt(long = "expiration", default_value = "")]
-    pub expiration: String,
 }
 
 impl CommandLineArgs {
     pub fn parse(self) -> CommandArgs {
         let indexer = if let Some(url) = self.indexer_url {
             IndexerNetwork::Url(url.clone())
-        } else if let Some(addr) = self.indexer_p2p {
-            IndexerNetwork::P2p(addr)
         } else {
-            IndexerNetwork::Url("".to_owned()) // here is other bin
+            IndexerNetwork::P2p(self.indexer_p2p.unwrap())
         };
 
         let p2p = if self.relay {
@@ -116,9 +128,6 @@ impl CommandLineArgs {
             p2p: p2p,
             contract: self.contract.parse().unwrap(),
             signer: SecretKey::from_slice(&hex::decode(&self.signer).unwrap()).unwrap(),
-            open_indexer: self.indexer,
-            open_amount: self.amount,
-            open_expiration: self.expiration,
         }
     }
 }
@@ -132,9 +141,6 @@ pub struct CommandArgs {
     pub indexer: IndexerNetwork,
     pub contract: Address,
     pub signer: SecretKey,
-    pub open_indexer: String,
-    pub open_amount: String,
-    pub open_expiration: String,
 }
 
 #[allow(dead_code)]

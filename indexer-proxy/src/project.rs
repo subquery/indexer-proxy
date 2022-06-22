@@ -45,6 +45,11 @@ pub fn get_project(key: &str) -> Result<String, Error> {
     Ok(url.to_owned())
 }
 
+pub fn list_projects() -> Vec<String> {
+    let map = PROJECTS.lock().unwrap();
+    map.keys().map(|v| v.to_owned()).collect()
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct ProjectsResponse {
     #[serde(rename = "getAliveProjects")]

@@ -20,6 +20,7 @@
 extern crate tracing;
 
 mod cli;
+mod payg;
 mod server;
 
 #[cfg(feature = "p2p")]

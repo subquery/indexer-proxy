@@ -44,23 +44,6 @@ pub fn init_rpc_handler() -> RpcHandler<State> {
         Ok(vec![Event::Connect(addr), Event::Rpc(Default::default())])
     });
 
-    rpc_handler.add_method("query", |params: Vec<RpcParam>, _state: Arc<State>| async move {
-        if params.len() != 3 && params.len() != 4 {
-            return Err(RpcError::ParseError);
-        }
-        let s = params[0].as_str().ok_or(RpcError::ParseError)?;
-        let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
-        let project = params[1].as_str().ok_or(RpcError::ParseError)?.to_owned();
-        let query = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
-        let sign = if params.len() == 4 {
-            params[3].as_str().ok_or(RpcError::ParseError)?.to_owned()
-        } else {
-            "".to_owned()
-        };
-
-        Ok(vec![Event::Request(pid, Request::Query(project, query, sign))])
-    });
-
     rpc_handler.add_method(
         "state-channel",
         |params: Vec<RpcParam>, _state: Arc<State>| async move {
@@ -69,28 +52,55 @@ pub fn init_rpc_handler() -> RpcHandler<State> {
             }
             let s = params[0].as_str().ok_or(RpcError::ParseError)?;
             let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
-            let infos = params[1].as_str().ok_or(RpcError::ParseError)?;
+            let sign = params[1].as_str().ok_or(RpcError::ParseError)?;
+            let query = serde_json::to_string(&json!({
+                "method": "open",
+                "state": sign,
+            }))
+            .unwrap();
 
-            Ok(vec![Event::RequestSync(pid, Request::StateChannel(infos.to_owned()))])
+            Ok(vec![Event::RequestSync(pid, Request::StateChannel(query))])
         },
     );
 
-    rpc_handler.add_method("query-sync", |params: Vec<RpcParam>, _state: Arc<State>| async move {
-        info!("params: {:?}", params);
-        if params.len() != 3 && params.len() != 4 {
+    rpc_handler.add_method("payg", |params: Vec<RpcParam>, _state: Arc<State>| async move {
+        if params.len() != 4 {
             return Err(RpcError::ParseError);
         }
         let s = params[0].as_str().ok_or(RpcError::ParseError)?;
         let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
         let project = params[1].as_str().ok_or(RpcError::ParseError)?.to_owned();
         let query = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
-        let sign = if params.len() == 4 {
-            params[3].as_str().ok_or(RpcError::ParseError)?.to_owned()
-        } else {
-            "".to_owned()
-        };
+        let sign = params[3].as_str().ok_or(RpcError::ParseError)?.to_owned();
+        let query = serde_json::to_string(&json!({
+            "method": "query",
+            "project": project,
+            "query": query,
+            "state": sign,
+        }))
+        .unwrap();
 
-        Ok(vec![Event::RequestSync(pid, Request::Query(project, query, sign))])
+        Ok(vec![Event::Request(pid, Request::StateChannel(query))])
+    });
+
+    rpc_handler.add_method("payg-sync", |params: Vec<RpcParam>, _state: Arc<State>| async move {
+        if params.len() != 4 {
+            return Err(RpcError::ParseError);
+        }
+        let s = params[0].as_str().ok_or(RpcError::ParseError)?;
+        let pid = s.parse().map_err(|_e| RpcError::InvalidRequest)?;
+        let project = params[1].as_str().ok_or(RpcError::ParseError)?.to_owned();
+        let query = params[2].as_str().ok_or(RpcError::ParseError)?.to_owned();
+        let sign = params[3].as_str().ok_or(RpcError::ParseError)?.to_owned();
+        let query = serde_json::to_string(&json!({
+            "method": "query",
+            "project": project,
+            "query": query,
+            "state": sign,
+        }))
+        .unwrap();
+
+        Ok(vec![Event::RequestSync(pid, Request::StateChannel(query))])
     });
 
     rpc_handler.add_method("response", |params: Vec<RpcParam>, _state: Arc<State>| async move {
@@ -101,7 +111,7 @@ pub fn init_rpc_handler() -> RpcHandler<State> {
         let msg = params[1].as_str().ok_or(RpcError::ParseError)?;
 
         Ok(vec![
-            Event::Response(uid, Response::RawData(msg.to_owned())),
+            Event::Response(uid, Response::Data(msg.to_owned())),
             Event::Rpc(Default::default()),
         ])
     });
