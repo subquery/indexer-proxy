@@ -3,8 +3,7 @@ members = [
  "utils",
  "indexer-proxy",
  "consumer-proxy",
- "consumer-hoster",
-   "cli",
+ "cli",
 ]
 resolver = "2"
 
