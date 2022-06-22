@@ -38,6 +38,7 @@ pub struct OpenState {
     pub consumer: Address,
     pub amount: U256,
     pub expiration: U256,
+    pub deployment_id: [u8; 32],
     pub callback: Vec<u8>,
     pub indexer_sign: Signature,
     pub consumer_sign: Signature,
@@ -51,6 +52,7 @@ impl OpenState {
         consumer: Address,
         amount: U256,
         expiration: U256,
+        deployment_id: [u8; 32],
         callback: Vec<u8>,
         key: SecretKeyRef,
     ) -> Result<Self, Error> {
@@ -70,6 +72,7 @@ impl OpenState {
             consumer,
             amount,
             expiration,
+            deployment_id,
             callback,
             consumer_sign: default_sign(),
             indexer_sign: default_sign(),
@@ -86,6 +89,7 @@ impl OpenState {
             self.consumer.into_token(),
             self.amount.into_token(),
             self.expiration.into_token(),
+            self.deployment_id.into_token(),
             self.callback.clone().into_token(),
         ]);
         let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
@@ -105,6 +109,7 @@ impl OpenState {
             self.consumer.into_token(),
             self.amount.into_token(),
             self.expiration.into_token(),
+            self.deployment_id.into_token(),
             self.callback.clone().into_token(),
         ]);
         let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
@@ -139,6 +144,13 @@ impl OpenState {
             .map_err(|_e| Error::InvalidSerialize)?;
         let expiration = U256::from_dec_str(params["expiration"].as_str().ok_or(Error::InvalidSerialize)?)
             .map_err(|_e| Error::InvalidSerialize)?;
+        let deployment = hex::decode(params["deploymentId"].as_str().ok_or(Error::InvalidSerialize)?)
+            .map_err(|_e| Error::InvalidSerialize)?;
+        if deployment.len() != 32 {
+            return Err(Error::InvalidSerialize);
+        }
+        let mut deployment_id = [0u8; 32];
+        deployment_id.copy_from_slice(&deployment);
         let callback = hex::decode(params["callback"].as_str().ok_or(Error::InvalidSerialize)?)
             .map_err(|_e| Error::InvalidSerialize)?;
         let indexer_sign: Signature =
@@ -153,6 +165,7 @@ impl OpenState {
             consumer,
             amount,
             expiration,
+            deployment_id,
             callback,
             indexer_sign,
             consumer_sign,
@@ -167,6 +180,7 @@ impl OpenState {
             "consumer": format!("{:?}", self.consumer),
             "amount": self.amount.to_string(),
             "expiration": self.expiration.to_string(),
+            "deploymentId": hex::encode(&self.deployment_id),
             "callback": hex::encode(&self.callback),
             "indexerSign": convert_sign_to_string(&self.indexer_sign),
             "consumerSign": convert_sign_to_string(&self.consumer_sign),

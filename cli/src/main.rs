@@ -91,6 +91,8 @@ enum Cli {
         amount: u128,
         #[structopt(short, long)]
         expiration: u128,
+        #[structopt(short, long)]
+        deployment: String,
     },
     /// Channel show on-chain info.
     ChannelShow {
@@ -161,11 +163,15 @@ async fn main() {
                 init(endpoint, deploy, contracts, false).await.unwrap();
             register_consumer_proxy(&web3, &contracts, &miner, &consumer, 1000).await;
         }
-        Cli::ConsumerOpen { amount, expiration } => {
+        Cli::ConsumerOpen {
+            amount,
+            expiration,
+            deployment,
+        } => {
             let consumer = SecretKey::from_slice(&hex::decode(CONSUMER).unwrap()).unwrap();
             let indexer = SecretKey::from_slice(&hex::decode(INDEXER).unwrap()).unwrap();
             let indexer_addr = SecretKeyRef::new(&indexer).address();
-            open_channel_with_consumer(&consumer, indexer_addr, amount, expiration).await;
+            open_channel_with_consumer(&consumer, indexer_addr, amount, expiration, deployment).await;
         }
         Cli::ChannelShow {
             endpoint,
@@ -547,7 +553,13 @@ async fn register_consumer_proxy(
     println!("On-chain Consumer: {}", result == address);
 }
 
-async fn open_channel_with_consumer(sk: &SecretKey, indexer: Address, amount: u128, expiration: u128) {
+async fn open_channel_with_consumer(
+    sk: &SecretKey,
+    indexer: Address,
+    amount: u128,
+    expiration: u128,
+    deployment: String,
+) {
     let consumer = SecretKeyRef::new(sk).address();
     let mut rng = ChaChaRng::from_entropy();
     let mut id = [0u64; 4]; // u256
@@ -557,6 +569,17 @@ async fn open_channel_with_consumer(sk: &SecretKey, indexer: Address, amount: u1
     let channel = U256(id);
     let amount = U256::from(amount);
     let expiration = U256::from(expiration);
+
+    let deployment_id = if deployment.starts_with("0x") {
+        hex::decode(&deployment[2..]).unwrap()
+    } else {
+        // default is bs58
+        bs58::decode(deployment).into_vec().unwrap()
+    };
+    if deployment_id.len() != 32 {
+        println!("Invalid deployment(project) id!");
+        return;
+    }
 
     let msg = encode(&[channel.into_token(), amount.into_token()]);
     let mut bytes = "\x19Ethereum Signed Message:\n32".as_bytes().to_vec();
@@ -571,6 +594,7 @@ async fn open_channel_with_consumer(sk: &SecretKey, indexer: Address, amount: u1
         "consumer": format!("{:?}", consumer),
         "amount": amount.to_string(),
         "expiration": expiration.to_string(),
+        "deploymentId": hex::encode(deployment_id),
         "sign": callback,
     });
     let data = serde_json::to_string(&query).unwrap();

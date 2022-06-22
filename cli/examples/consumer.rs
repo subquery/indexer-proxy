@@ -378,6 +378,7 @@ async fn main() {
                         let indexer: Address = next_params.next().unwrap().parse().unwrap();
                         let amount = U256::from_dec_str(next_params.next().unwrap()).unwrap();
                         let expiration = U256::from_dec_str(next_params.next().unwrap()).unwrap();
+                        let deployment_id = bs58::decode(default_project).into_vec().unwrap();
 
                         let state = OpenState::consumer_generate(
                             None,
@@ -385,6 +386,7 @@ async fn main() {
                             consumer,
                             amount,
                             expiration,
+                            deployment_id,
                             vec![],
                             SecretKeyRef::new(&consumer_sk),
                         )

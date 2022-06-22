@@ -33,7 +33,7 @@ use web3::{
 };
 
 use crate::cli::COMMAND;
-use crate::payg::{add_project, StateChannel};
+use crate::payg::StateChannel;
 
 pub async fn start_server(host: &str, port: u16) {
     // query with agreement.
@@ -117,6 +117,13 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
         .and_then(|v| v.as_str())
         .and_then(|v| v.parse().ok())
         .ok_or(reject::custom(Error::InvalidRequest))?;
+    let deployment = payload
+        .get("deploymentId")
+        .and_then(|v| v.as_str())
+        .and_then(|v| hex::decode(v).ok())
+        .ok_or(reject::custom(Error::InvalidRequest))?;
+    let mut deployment_id = [0u8; 32];
+    deployment_id.copy_from_slice(&deployment);
     let callback = payload
         .get("sign")
         .and_then(|v| v.as_str())
@@ -141,6 +148,7 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
         COMMAND.contract(),
         amount,
         expiration,
+        deployment_id,
         convert_sign_to_bytes(&sign),
         COMMAND.signer(),
     )?;
@@ -150,18 +158,7 @@ pub async fn open_payg(payload: Value) -> WebResult<impl Reply> {
     match res {
         Ok(data) => {
             let state = OpenState::from_json(&data).unwrap();
-            let channel = state.channel_id;
-            let projects: Vec<String> = data
-                .get("projects")
-                .and_then(|v| v.as_array())
-                .unwrap_or(&vec![])
-                .iter()
-                .map(|v| v.as_str().unwrap_or("").to_owned())
-                .collect();
             StateChannel::add(state).await;
-            for project in projects {
-                add_project(project, channel).await;
-            }
             Ok(reply::json(&data))
         }
         Err(err) => {

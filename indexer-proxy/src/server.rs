@@ -32,7 +32,7 @@ use warp::{reject, reply, Filter, Reply};
 
 use crate::auth::{self, with_auth};
 use crate::payg::{open_state, query_state, with_state};
-use crate::project::{get_project, list_projects};
+use crate::project::get_project;
 use crate::{account, cli::COMMAND, prometheus};
 
 #[derive(Serialize)]
@@ -127,8 +127,7 @@ pub async fn query_handler(id: String, deployment_id: String, query: Value) -> W
 }
 
 pub async fn generate_payg(payload: Value) -> WebResult<impl Reply> {
-    let mut state = open_state(&payload).await.map_err(|e| reject::custom(e))?;
-    state["projects"] = json!(list_projects());
+    let state = open_state(&payload).await.map_err(|e| reject::custom(e))?;
     Ok(reply::json(&state))
 }
 

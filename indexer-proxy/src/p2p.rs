@@ -34,10 +34,12 @@ impl P2pHandler for IndexerP2p {
         match request {
             Request::StateChannel(infos) => channel_handle(&infos).await,
             Request::Info => {
+                let projects = list_projects();
                 let account = ACCOUNT.read().await;
                 let data = json!({
                     "indexer": format!("{:?}", account.indexer),
                     "controller": format!("{:?}", account.controller),
+                    "projects": projects,
                     "price": U256::from(PRICE),
                 });
                 drop(account);
@@ -64,10 +66,7 @@ async fn channel_handle(infos: &str) -> Response {
     let state = state_res.unwrap(); // safe unwrap.
     match params["method"].as_str().unwrap() {
         "open" => match open_state(&state).await {
-            Ok(mut state) => {
-                state["projects"] = json!(list_projects());
-                Response::StateChannel(serde_json::to_string(&state).unwrap())
-            }
+            Ok(state) => Response::StateChannel(serde_json::to_string(&state).unwrap()),
             Err(err) => Response::Error(err.to_string()),
         },
         "query" => {

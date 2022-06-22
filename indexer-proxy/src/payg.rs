@@ -41,6 +41,8 @@ pub const PRICE: u64 = 10; // TODO delete
 pub async fn open_state(body: &Value) -> Result<Value, Error> {
     let mut state = OpenState::from_json(body)?;
 
+    // TODO check project is exists. unify the deployment id store style.
+
     let account = ACCOUNT.read().await;
     let key = SecretKeyRef::new(&account.controller_sk);
     state.sign(key, false)?;
@@ -52,7 +54,7 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
 
     let mdata = format!(
         r#"mutation {{
-  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, callback:"0x{}", lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
+  channelOpen(id:"{:#X}", indexer:"{:?}", consumer:"{:?}", balance:{}, expiration:{}, deploymentId:"0x{}", callback:"0x{}", lastIndexerSign:"0x{}", lastConsumerSign:"0x{}") {{
     lastPrice
   }}
 }}
@@ -62,6 +64,7 @@ pub async fn open_state(body: &Value) -> Result<Value, Error> {
         state.consumer,
         state.amount,
         state.expiration,
+        hex::encode(&state.deployment_id),
         hex::encode(&state.callback),
         convert_sign_to_string(&state.indexer_sign),
         convert_sign_to_string(&state.consumer_sign)

@@ -10,16 +10,7 @@ use web3::{
     types::{Address, U256},
 };
 
-pub static CHANNELS: Lazy<RwLock<HashMap<U256, StateChannel>>> = Lazy::new(|| RwLock::new(HashMap::new()));
-pub static PROJECTS: Lazy<RwLock<HashMap<String, U256>>> = Lazy::new(|| RwLock::new(HashMap::new()));
-
-pub async fn get_project(project: &str) -> Result<U256, Error> {
-    PROJECTS.read().await.get(project).cloned().ok_or(Error::InvalidRequest)
-}
-
-pub async fn add_project(project: String, channel: U256) {
-    PROJECTS.write().await.insert(project, channel);
-}
+pub static CHANNELS: Lazy<RwLock<HashMap<String, StateChannel>>> = Lazy::new(|| RwLock::new(HashMap::new()));
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
@@ -40,6 +31,7 @@ pub struct StateChannel {
     balance: U256,
     expiration_at: U256,
     challenge_at: U256,
+    deployment_id: [u8; 32],
     last_final: bool,
     last_price: U256,
     last_indexer_sign: Signature,
@@ -47,13 +39,21 @@ pub struct StateChannel {
 }
 
 impl StateChannel {
-    pub async fn get(project: &str) -> Result<StateChannel, Error> {
-        let id = get_project(project).await?;
+    pub async fn get(deployment: &str) -> Result<StateChannel, Error> {
+        let deployment_id = if deployment.starts_with("0x") {
+            hex::decode(&deployment[2..]).map_err(|_| Error::InvalidRequest)?
+        } else {
+            // default is bs58
+            bs58::decode(deployment).into_vec().map_err(|_| Error::InvalidRequest)?
+        };
+        let id = hex::encode(deployment_id);
         let channel = CHANNELS.read().await.get(&id).cloned().ok_or(Error::InvalidRequest)?;
         Ok(channel)
     }
 
     pub async fn add(state: OpenState) {
+        let id = hex::encode(&state.deployment_id);
+
         let channel = StateChannel {
             id: state.channel_id,
             indexer: state.indexer,
@@ -65,13 +65,14 @@ impl StateChannel {
             onchain_count: U256::from(0u64),
             remote_count: U256::from(0u64),
             challenge_at: U256::from(0u64),
+            deployment_id: state.deployment_id,
             last_price: state.next_price,
             last_final: false,
             last_indexer_sign: default_sign(),
             last_consumer_sign: default_sign(),
         };
 
-        CHANNELS.write().await.insert(state.channel_id, channel);
+        CHANNELS.write().await.insert(id, channel);
     }
 
     pub fn next_query(self, sk: SecretKeyRef) -> Result<QueryState, Error> {
@@ -89,7 +90,16 @@ impl StateChannel {
         )
     }
 
-    pub async fn renew(id: U256, state: QueryState) {
+    pub async fn renew(cid: U256, state: QueryState) {
+        let channels = CHANNELS.write().await;
+        let mut id = String::new();
+        for (k, v) in channels.iter() {
+            if v.id == cid {
+                id = k.clone();
+            }
+        }
+        drop(channels);
+
         if let Some(channel) = CHANNELS.write().await.get_mut(&id) {
             // TODO if next_price != last_price, checkpoint chain.
             // TODO adjust the count number if current_count != remote_count.
@@ -117,6 +127,7 @@ impl Clone for StateChannel {
             balance: self.balance,
             expiration_at: self.expiration_at,
             challenge_at: self.challenge_at,
+            deployment_id: self.deployment_id,
             last_final: self.last_final,
             last_price: self.last_price,
             last_indexer_sign: convert_string_to_sign(&convert_sign_to_string(&self.last_indexer_sign)),
