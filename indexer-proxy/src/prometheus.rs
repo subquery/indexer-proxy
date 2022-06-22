@@ -30,7 +30,7 @@ pub static QUERY_COUNTER: Lazy<IntCounterVec> = Lazy::new(|| {
     .unwrap()
 });
 
-fn pushgateway_url() -> String {
+fn subquery_pushgateway_url() -> String {
     let url = if COMMAND.dev() {
         "https://pushgateway-kong-dev.onfinality.me"
     } else {
@@ -41,13 +41,16 @@ fn pushgateway_url() -> String {
 }
 
 pub fn push_query_metrics(id: String) {
-    tokio::spawn(push_query_total(id));
+    let subquery_url = subquery_pushgateway_url();
+    tokio::spawn(push_query_total(id.clone(), subquery_url));
+
+    // TODO: pushgateway can be empty
+    let user_url = COMMAND.pushgateway();
+    tokio::spawn(push_query_total(id, user_url.to_string()));
 }
 
-pub async fn push_query_total(id: String) {
-    let url = pushgateway_url();
+pub async fn push_query_total(id: String, url: String) {
     let indexer = account::get_indexer().await;
-
     QUERY_COUNTER.with_label_values(&[&id]).inc();
 
     let _ = prometheus::push_add_metrics(

@@ -59,6 +59,9 @@ pub struct CommandLineArgs {
     /// enable dev mode
     #[structopt(long = "dev")]
     pub dev: bool,
+    /// pushgateway url
+    #[structopt(long = "pushgateway", default_value = "127.0.0.1:9091")]
+    pub pushgateway: String,
     /// Rpc binding socket address.
     #[structopt(short = "r", long = "p2p-rpc", default_value = "127.0.0.1:7001")]
     pub p2p_rpc: SocketAddr,
@@ -103,6 +106,10 @@ impl CommandLineArgs {
 
     pub fn dev(&self) -> bool {
         self.dev
+    }
+
+    pub fn pushgateway(&self) -> &str {
+        &self.pushgateway
     }
 
     pub fn rpc(&self) -> SocketAddr {
